@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { handlePush } from '@redocly/cli/lib/cms/commands/push'
 import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status'
+import { loadConfig } from '@redocly/openapi-core'
 import path from 'path'
 
 export async function run(): Promise<void> {
@@ -16,6 +17,7 @@ export async function run(): Promise<void> {
     const files = core.getInput('files').split(' ')
     const mountPath = core.getInput('mountPath')
     const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000
+    const redoclyConfigPath = core.getInput('redoclyConfigPath')
 
     const namespace = github.context.payload?.repository?.owner?.login
     const repository = github.context.payload?.repository?.name
@@ -35,6 +37,7 @@ export async function run(): Promise<void> {
     const absoluteFilePaths = files.map(_path =>
       path.join(process.env.GITHUB_WORKSPACE || '', _path)
     )
+
     console.log('Push params', {
       redocly: {
         rOrganization,
@@ -58,6 +61,13 @@ export async function run(): Promise<void> {
       maxExecutionTime
     })
 
+    const config = await loadConfig({
+      configPath: redoclyConfigPath
+    })
+
+    console.log('configPath:', redoclyConfigPath)
+    console.log('redoclyConfig:', config)
+
     const pushData = await handlePush(
       {
         organization: rOrganization,
@@ -76,8 +86,7 @@ export async function run(): Promise<void> {
         files: absoluteFilePaths,
         'max-execution-time': maxExecutionTime
       },
-      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-      {} as any // TODO: pass config
+      config
     )
 
     if (pushData) {
@@ -90,8 +99,7 @@ export async function run(): Promise<void> {
           domain: rDomain,
           'max-execution-time': maxExecutionTime
         },
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        {} as any // TODO: pass config
+        config
       )
       console.log('handlePushStatusData:', handlePushStatusData)
       core.setOutput('pushId', pushData.pushId)

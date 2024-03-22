@@ -27,6 +27,9 @@ inputs:
   maxExecutionTime:
     description: 'Max execution time in milliseconds'
     required: false
+  redoclyConfigPath:
+    description: 'Path to the redocly config file'
+    required: false
 
 # Define your outputs here.
 outputs:
