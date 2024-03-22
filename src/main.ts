@@ -18,7 +18,7 @@ export async function run(): Promise<void> {
         domain,
         'max-execution-time': 1000
       },
-      // @eslint-disable-next-line
+      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       {} as any // TODO: pass config
     )
 
