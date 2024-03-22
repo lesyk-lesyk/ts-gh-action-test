@@ -10,14 +10,23 @@ branding:
 # Define your inputs here.
 inputs:
   organization:
-    description: 'Your input description here'
+    description: 'Your organization slug'
     required: true
   project:
-    description: 'Your input description here'
+    description: 'Your project slug'
     required: true
   domain:
-    description: 'Your input description here'
+    description: 'Your domain'
+    required: false
+  files:
+    description: 'Your file/files list'
     required: true
+  moundPath:
+    description: 'Your remote content mount path'
+    required: true
+  maxExecutionTime:
+    description: 'Max execution time in milliseconds'
+    required: false
 
 # Define your outputs here.
 outputs:

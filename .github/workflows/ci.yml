@@ -60,6 +60,8 @@ jobs:
           organization: 'test'
           project: 'test'
           domain: 'test'
+          files: 'test'
+          mountPath: 'test-folder'
 
       - name: Print Output
         id: output
