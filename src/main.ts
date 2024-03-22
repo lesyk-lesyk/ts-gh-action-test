@@ -1,4 +1,6 @@
 import * as core from '@actions/core'
+import * as github from '@actions/github'
+import { handlePush } from '@redocly/cli/lib/cms/commands/push'
 import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status'
 
 export async function run(): Promise<void> {
@@ -7,25 +9,51 @@ export async function run(): Promise<void> {
 
     const organization = core.getInput('organization')
     const project = core.getInput('project')
-    const pushId = core.getInput('pushId')
     const domain = core.getInput('domain')
 
-    const handlePushStatusData = await handlePushStatus(
+    // Get the JSON webhook payload for the event that triggered the workflow
+    const context = JSON.stringify(github.context, undefined, 2)
+
+    console.log(`The event context: ${context}`)
+
+    const pushData = await handlePush(
       {
         organization,
-        project,
-        pushId,
+        namespace: 'default',
         domain,
+        project,
+        'default-branch': 'main',
+        branch: 'main',
+        'mount-path': 'docs',
+        'commit-sha': '1234567890abcdef',
+        'commit-url': '',
+        author: 'github-actions',
+        message: 'Update docs',
+        repository: '',
+        files: ['docs/**/*'],
         'max-execution-time': 1000
       },
       // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       {} as any // TODO: pass config
     )
 
-    console.log('handlePushStatusData:', handlePushStatusData)
-    console.log('Action finished!')
+    if (pushData) {
+      const handlePushStatusData = await handlePushStatus(
+        {
+          organization,
+          project,
+          pushId: pushData.pushId,
+          domain,
+          'max-execution-time': 1000
+        },
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+        {} as any // TODO: pass config
+      )
+      console.log('handlePushStatusData:', handlePushStatusData)
+      core.setOutput('pushId', pushData.pushId)
+    }
 
-    core.setOutput('pushId', pushId)
+    console.log('Action finished!')
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

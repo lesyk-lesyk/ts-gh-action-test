@@ -15,9 +15,6 @@ inputs:
   project:
     description: 'Your input description here'
     required: true
-  pushId:
-    description: 'Your input description here'
-    required: true
   domain:
     description: 'Your input description here'
     required: true
