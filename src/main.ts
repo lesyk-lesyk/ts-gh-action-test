@@ -1,27 +1,32 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status'
 
-/**
- * The main function for the action.
- * @returns {Promise<void>} Resolves when the action is complete.
- */
 export async function run(): Promise<void> {
   try {
     console.log('Action started!')
 
-    const ms: string = core.getInput('milliseconds')
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const organization = core.getInput('organization')
+    const project = core.getInput('project')
+    const pushId = core.getInput('pushId')
+    const domain = core.getInput('domain')
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const handlePushStatusData = await handlePushStatus(
+      {
+        organization,
+        project,
+        pushId,
+        domain,
+        'max-execution-time': 1000
+      },
+      // @eslint-disable-next-line
+      {} as any // TODO: pass config
+    )
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    console.log('handlePushStatusData:', handlePushStatusData)
+    console.log('Action finished!')
+
+    core.setOutput('pushId', pushId)
   } catch (error) {
-    // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   }
 }
