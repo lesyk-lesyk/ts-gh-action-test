@@ -62,7 +62,10 @@ export async function run(): Promise<void> {
     })
 
     const config = await loadConfig({
-      configPath: redoclyConfigPath
+      configPath:
+        redoclyConfigPath && process.env.GITHUB_WORKSPACE
+          ? path.join(process.env.GITHUB_WORKSPACE, redoclyConfigPath)
+          : undefined
     })
 
     console.log('configPath:', redoclyConfigPath)

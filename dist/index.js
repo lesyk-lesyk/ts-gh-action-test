@@ -76022,7 +76022,9 @@ async function run() {
             maxExecutionTime
         });
         const config = await (0, openapi_core_1.loadConfig)({
-            configPath: redoclyConfigPath
+            configPath: redoclyConfigPath && process.env.GITHUB_WORKSPACE
+                ? path_1.default.join(process.env.GITHUB_WORKSPACE, redoclyConfigPath)
+                : undefined
         });
         console.log('configPath:', redoclyConfigPath);
         console.log('redoclyConfig:', config);
