@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { handlePush } from '@redocly/cli/lib/cms/commands/push'
 import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status'
+import path from 'path'
 
 export async function run(): Promise<void> {
   try {
@@ -31,6 +32,9 @@ export async function run(): Promise<void> {
     const commitAuthor = `${headCommit?.author?.name} <${headCommit?.author?.email}>`
     const commitCreatedAt = headCommit?.timestamp
 
+    const absoluteFilePaths = files.map(_path =>
+      path.join(process.env.GITHUB_WORKSPACE || '', _path)
+    )
     console.log('Push params', {
       redocly: {
         rOrganization,
@@ -49,6 +53,7 @@ export async function run(): Promise<void> {
         commitCreatedAt
       },
       files,
+      absoluteFilePaths,
       mountPath,
       maxExecutionTime
     })
@@ -68,7 +73,7 @@ export async function run(): Promise<void> {
         author: commitAuthor,
         'created-at': commitCreatedAt,
         'mount-path': mountPath,
-        files,
+        files: absoluteFilePaths,
         'max-execution-time': maxExecutionTime
       },
       // eslint-disable-next-line  @typescript-eslint/no-explicit-any

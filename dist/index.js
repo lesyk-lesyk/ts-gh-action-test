@@ -75965,12 +75965,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
 const push_1 = __nccwpck_require__(8893);
 const push_status_1 = __nccwpck_require__(74229);
+const path_1 = __importDefault(__nccwpck_require__(71017));
 async function run() {
     try {
         console.log('Action started!');
@@ -75992,6 +75996,7 @@ async function run() {
         const commitUrl = headCommit?.url;
         const commitAuthor = `${headCommit?.author?.name} <${headCommit?.author?.email}>`;
         const commitCreatedAt = headCommit?.timestamp;
+        const absoluteFilePaths = files.map(_path => path_1.default.join(process.env.GITHUB_WORKSPACE || '', _path));
         console.log('Push params', {
             redocly: {
                 rOrganization,
@@ -76010,6 +76015,7 @@ async function run() {
                 commitCreatedAt
             },
             files,
+            absoluteFilePaths,
             mountPath,
             maxExecutionTime
         });
@@ -76027,7 +76033,7 @@ async function run() {
             author: commitAuthor,
             'created-at': commitCreatedAt,
             'mount-path': mountPath,
-            files,
+            files: absoluteFilePaths,
             'max-execution-time': maxExecutionTime
         }, 
         // eslint-disable-next-line  @typescript-eslint/no-explicit-any
