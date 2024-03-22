@@ -75979,7 +75979,7 @@ async function run() {
         const rProject = core.getInput('project');
         const rDomain = core.getInput('domain') || 'https://app.cloud.redocly.com';
         const files = core.getInput('files').split(' ');
-        const moundPath = core.getInput('mountPath');
+        const mountPath = core.getInput('mountPath');
         const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
         const namespace = github.context.payload?.repository?.owner?.login;
         const repository = github.context.payload?.repository?.name;
@@ -76010,7 +76010,7 @@ async function run() {
                 commitCreatedAt
             },
             files,
-            moundPath,
+            mountPath,
             maxExecutionTime
         });
         const pushData = await (0, push_1.handlePush)({
@@ -76026,7 +76026,7 @@ async function run() {
             'commit-url': commitUrl,
             author: commitAuthor,
             'created-at': commitCreatedAt,
-            'mount-path': moundPath,
+            'mount-path': mountPath,
             files,
             'max-execution-time': maxExecutionTime
         }, 

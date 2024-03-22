@@ -13,7 +13,7 @@ export async function run(): Promise<void> {
     const rProject = core.getInput('project')
     const rDomain = core.getInput('domain') || 'https://app.cloud.redocly.com'
     const files = core.getInput('files').split(' ')
-    const moundPath = core.getInput('mountPath')
+    const mountPath = core.getInput('mountPath')
     const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000
 
     const namespace = github.context.payload?.repository?.owner?.login
@@ -49,7 +49,7 @@ export async function run(): Promise<void> {
         commitCreatedAt
       },
       files,
-      moundPath,
+      mountPath,
       maxExecutionTime
     })
 
@@ -67,7 +67,7 @@ export async function run(): Promise<void> {
         'commit-url': commitUrl,
         author: commitAuthor,
         'created-at': commitCreatedAt,
-        'mount-path': moundPath,
+        'mount-path': mountPath,
         files,
         'max-execution-time': maxExecutionTime
       },

@@ -21,7 +21,7 @@ inputs:
   files:
     description: 'Space separated list of files/folders to fetch'
     required: true
-  moundPath:
+  mountPath:
     description: 'Your remote content mount path'
     required: true
   maxExecutionTime:
