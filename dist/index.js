@@ -75974,6 +75974,7 @@ const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
 const push_1 = __nccwpck_require__(8893);
 const push_status_1 = __nccwpck_require__(74229);
+const openapi_core_1 = __nccwpck_require__(59307);
 const path_1 = __importDefault(__nccwpck_require__(71017));
 async function run() {
     try {
@@ -75985,6 +75986,7 @@ async function run() {
         const files = core.getInput('files').split(' ');
         const mountPath = core.getInput('mountPath');
         const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
+        const redoclyConfigPath = core.getInput('redoclyConfigPath');
         const namespace = github.context.payload?.repository?.owner?.login;
         const repository = github.context.payload?.repository?.name;
         const branch = github.context.ref.split('/').pop();
@@ -76019,6 +76021,11 @@ async function run() {
             mountPath,
             maxExecutionTime
         });
+        const config = await (0, openapi_core_1.loadConfig)({
+            configPath: redoclyConfigPath
+        });
+        console.log('configPath:', redoclyConfigPath);
+        console.log('redoclyConfig:', config);
         const pushData = await (0, push_1.handlePush)({
             organization: rOrganization,
             project: rProject,
@@ -76035,10 +76042,7 @@ async function run() {
             'mount-path': mountPath,
             files: absoluteFilePaths,
             'max-execution-time': maxExecutionTime
-        }, 
-        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-        {} // TODO: pass config
-        );
+        }, config);
         if (pushData) {
             console.log('Push data:', pushData);
             const handlePushStatusData = await (0, push_status_1.handlePushStatus)({
@@ -76047,10 +76051,7 @@ async function run() {
                 pushId: pushData.pushId,
                 domain: rDomain,
                 'max-execution-time': maxExecutionTime
-            }, 
-            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-            {} // TODO: pass config
-            );
+            }, config);
             console.log('handlePushStatusData:', handlePushStatusData);
             core.setOutput('pushId', pushData.pushId);
         }
