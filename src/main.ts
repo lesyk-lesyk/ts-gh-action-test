@@ -12,7 +12,7 @@ export async function run(): Promise<void> {
     const rOrganization = core.getInput('organization')
     const rProject = core.getInput('project')
     const rDomain = core.getInput('domain') || 'https://app.cloud.redocly.com'
-    const files = JSON.parse(core.getInput('files'))
+    const files = core.getInput('files').split(' ')
     const moundPath = core.getInput('mountPath')
     const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000
 
