@@ -61,6 +61,8 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
+!openapi-core.tgz
+!redocly-cli.tgz
 
 # Yarn Integrity file
 .yarn-integrity
