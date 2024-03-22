@@ -1,110 +1,97 @@
+import path from 'path'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import { handlePush } from '@redocly/cli/lib/cms/commands/push'
 import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status'
 import { loadConfig } from '@redocly/openapi-core'
-import path from 'path'
+import { setCommitStatuses } from './set-commit-statuses'
 
 export async function run(): Promise<void> {
   try {
-    console.log('Action started!')
+    const inputData = parseInputData()
+    const ghEvent = parseEventData()
 
-    console.log('Parsing params...')
-
-    const rOrganization = core.getInput('organization')
-    const rProject = core.getInput('project')
-    const rDomain = core.getInput('domain') || 'https://app.cloud.redocly.com'
-    const files = core.getInput('files').split(' ')
-    const mountPath = core.getInput('mountPath')
-    const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000
-    const redoclyConfigPath = core.getInput('redoclyConfigPath')
-
-    const namespace = github.context.payload?.repository?.owner?.login
-    const repository = github.context.payload?.repository?.name
-
-    const branch = github.context.ref.split('/').pop() as string
-    const defaultBranch: string =
-      github.context.payload?.repository?.default_branch ||
-      github.context.payload?.repository?.master_branch
-
-    const headCommit = github.context.payload?.head_commit
-    const commitMessage = headCommit?.message
-    const commitSha = headCommit?.id
-    const commitUrl = headCommit?.url
-    const commitAuthor = `${headCommit?.author?.name} <${headCommit?.author?.email}>`
-    const commitCreatedAt = headCommit?.timestamp
-
-    const absoluteFilePaths = files.map(_path =>
-      path.join(process.env.GITHUB_WORKSPACE || '', _path)
-    )
-
-    console.log('Push params', {
+    console.debug('Push arguments', {
       redocly: {
-        rOrganization,
-        rProject,
-        rDomain
+        redoclyOrgSlug: inputData.redoclyOrgSlug,
+        redoclyProjectSlug: inputData.redoclyProjectSlug,
+        redoclyDomain: inputData.redoclyDomain
       },
-      namespace,
-      repository,
-      branch,
-      defaultBranch,
-      commit: {
-        commitMessage,
-        commitSha,
-        commitUrl,
-        commitAuthor,
-        commitCreatedAt
-      },
-      files,
-      absoluteFilePaths,
-      mountPath,
-      maxExecutionTime
+      github: ghEvent,
+      pushParams: {
+        files: inputData.files,
+        mountPath: inputData.mountPath,
+        maxExecutionTime: inputData.maxExecutionTime,
+        configPath: inputData.configPath
+      }
     })
 
-    const config = await loadConfig({
-      configPath:
-        redoclyConfigPath && process.env.GITHUB_WORKSPACE
-          ? path.join(process.env.GITHUB_WORKSPACE, redoclyConfigPath)
-          : undefined
-    })
+    const config = await getRedoclyConfig(inputData.configPath)
 
-    console.log('configPath:', redoclyConfigPath)
-    console.log('redoclyConfig:', config)
+    console.log('Config', config)
+
+    if (
+      !ghEvent.branch ||
+      !ghEvent.defaultBranch ||
+      !ghEvent.commit.commitMessage ||
+      !ghEvent.commit.commitSha ||
+      !ghEvent.commit.commitAuthor ||
+      !ghEvent.namespace ||
+      !ghEvent.repository
+    ) {
+      throw new Error('Invalid GitHub event data')
+    }
 
     const pushData = await handlePush(
       {
-        organization: rOrganization,
-        project: rProject,
-        domain: rDomain,
-        namespace,
-        repository,
-        branch,
-        'default-branch': defaultBranch,
-        message: commitMessage,
-        'commit-sha': commitSha,
-        'commit-url': commitUrl,
-        author: commitAuthor,
-        'created-at': commitCreatedAt,
-        'mount-path': mountPath,
-        files: absoluteFilePaths,
-        'max-execution-time': maxExecutionTime
+        organization: inputData.redoclyOrgSlug,
+        project: inputData.redoclyProjectSlug,
+        domain: inputData.redoclyDomain,
+        'mount-path': inputData.mountPath,
+        files: inputData.files,
+        'max-execution-time': inputData.maxExecutionTime,
+        namespace: ghEvent.namespace,
+        repository: ghEvent.repository,
+        branch: ghEvent.branch,
+        'default-branch': ghEvent.defaultBranch,
+        message: ghEvent.commit.commitMessage,
+        'commit-sha': ghEvent.commit.commitSha,
+        'commit-url': ghEvent.commit.commitUrl,
+        author: ghEvent.commit.commitAuthor,
+        'created-at': ghEvent.commit.commitCreatedAt
       },
       config
     )
 
     if (pushData) {
       console.log('Push data:', pushData)
-      const handlePushStatusData = await handlePushStatus(
+      const pushStatusData = await handlePushStatus(
         {
-          organization: rOrganization,
-          project: rProject,
+          organization: inputData.redoclyOrgSlug,
+          project: inputData.redoclyProjectSlug,
           pushId: pushData.pushId,
-          domain: rDomain,
-          'max-execution-time': maxExecutionTime
+          domain: inputData.redoclyDomain,
+          'max-execution-time': inputData.maxExecutionTime,
+          wait: true
         },
         config
       )
-      console.log('handlePushStatusData:', handlePushStatusData)
+
+      console.log('pushStatusData', pushStatusData)
+
+      if (!pushStatusData) {
+        throw new Error('Missing push status data')
+      }
+
+      await setCommitStatuses({
+        data: pushStatusData,
+        owner: ghEvent.namespace,
+        repo: ghEvent.repository,
+        commitId: ghEvent.commit.commitSha,
+        organizationSlug: inputData.redoclyOrgSlug,
+        projectSlug: inputData.redoclyProjectSlug
+      })
+
       core.setOutput('pushId', pushData.pushId)
     }
 
@@ -112,4 +99,99 @@ export async function run(): Promise<void> {
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
+}
+
+interface ParsedInputData {
+  redoclyOrgSlug: string
+  redoclyProjectSlug: string
+  redoclyDomain: string
+  files: string[]
+  mountPath: string
+  maxExecutionTime: number
+  configPath: string
+}
+
+function parseInputData(): ParsedInputData {
+  const redoclyOrgSlug = core.getInput('organization')
+  const redoclyProjectSlug = core.getInput('project')
+  const redoclyDomain =
+    core.getInput('domain') || 'https://app.cloud.redocly.com'
+  const files = core.getInput('files').split(' ')
+  const mountPath = core.getInput('mountPath')
+  const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000
+  const configPath = core.getInput('configPath')
+
+  const absoluteFilePaths = files.map(_path =>
+    path.join(process.env.GITHUB_WORKSPACE || '', _path)
+  )
+
+  return {
+    redoclyOrgSlug,
+    redoclyProjectSlug,
+    redoclyDomain,
+    files: absoluteFilePaths,
+    mountPath,
+    maxExecutionTime,
+    configPath
+  }
+}
+
+interface ParsedEventData {
+  namespace?: string
+  repository?: string
+  branch?: string
+  defaultBranch?: string
+  commit: {
+    commitMessage?: string
+    commitSha?: string
+    commitUrl?: string
+    commitAuthor?: string
+    commitCreatedAt?: string
+  }
+}
+function parseEventData(): ParsedEventData {
+  const namespace = github.context.payload?.repository?.owner?.login
+  const repository = github.context.payload?.repository?.name
+
+  const branch = github.context.ref.split('/').pop()
+  const defaultBranch: string | undefined =
+    github.context.payload?.repository?.default_branch ||
+    github.context.payload?.repository?.master_branch
+
+  const headCommit = github.context.payload?.head_commit
+  const commitMessage: string | undefined = headCommit?.message
+  const commitSha: string | undefined = headCommit?.id
+  const commitUrl: string | undefined = headCommit?.url
+  const commitAuthor: string | undefined =
+    headCommit?.author?.name && headCommit?.author?.email
+      ? `${headCommit?.author?.name} <${headCommit?.author?.email}>`
+      : undefined
+  const commitCreatedAt: string | undefined = headCommit?.timestamp
+
+  return {
+    namespace,
+    repository,
+    branch,
+    defaultBranch,
+    commit: {
+      commitMessage,
+      commitSha,
+      commitUrl,
+      commitAuthor,
+      commitCreatedAt
+    }
+  }
+}
+
+async function getRedoclyConfig(
+  configPath: string | undefined
+): ReturnType<typeof loadConfig> {
+  const redoclyConfig = await loadConfig({
+    configPath:
+      configPath && process.env.GITHUB_WORKSPACE
+        ? path.join(process.env.GITHUB_WORKSPACE, configPath)
+        : undefined
+  })
+
+  return redoclyConfig
 }

@@ -12297,14 +12297,17 @@ const js_utils_1 = __nccwpck_require__(19265);
 const utils_2 = __nccwpck_require__(46870);
 const RETRY_INTERVAL = 5000; // ms
 function handlePushStatus(argv, config) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
+        console.log('test1');
+        console.log('test2');
         const startedAt = performance.now();
         const spinner = new spinner_1.Spinner();
         const { organization, project: projectId, pushId, wait, format } = argv;
         const orgId = organization || config.organization;
         if (!orgId) {
-            return (0, miscellaneous_1.exitWithError)(`No organization provided, please use --organization option or specify the 'organization' field in the config file.`);
+            (0, miscellaneous_1.exitWithError)(`No organization provided, please use --organization option or specify the 'organization' field in the config file.`);
+            return;
         }
         const domain = argv.domain || (0, api_1.getDomain)();
         const maxExecutionTime = argv['max-execution-time'] || 600;
@@ -12321,6 +12324,7 @@ function handlePushStatus(argv, config) {
                 buildType: 'preview',
                 retryTimeout,
                 onRetry: (lastResult) => {
+                    var _a;
                     format === 'stylish' &&
                         displayDeploymentAndBuildStatus({
                             status: lastResult.status['preview'].deploy.status,
@@ -12329,6 +12333,7 @@ function handlePushStatus(argv, config) {
                             buildType: 'preview',
                             wait,
                         });
+                    (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                 },
             });
             if (format === 'stylish') {
@@ -12347,13 +12352,16 @@ function handlePushStatus(argv, config) {
                     buildType: 'production',
                     retryTimeout,
                     onRetry: (lastResult) => {
-                        displayDeploymentAndBuildStatus({
-                            status: lastResult.status['production'].deploy.status,
-                            previewUrl: lastResult.status['production'].deploy.url,
-                            spinner,
-                            buildType: 'production',
-                            wait,
-                        });
+                        var _a;
+                        format === 'stylish' &&
+                            displayDeploymentAndBuildStatus({
+                                status: lastResult.status['production'].deploy.status,
+                                previewUrl: lastResult.status['production'].deploy.url,
+                                spinner,
+                                buildType: 'production',
+                                wait,
+                            });
+                        (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                     },
                 })
                 : null;
@@ -12363,21 +12371,17 @@ function handlePushStatus(argv, config) {
                 printPushStatusInfo({ orgId, projectId, pushId, startedAt });
             }
             const summary = {
-                pushMetadata: {
-                    pushId,
-                    orgSlug: orgId,
-                    projectSlug: projectId,
-                },
                 preview: {
                     status: previewPushData.status.preview.deploy.status,
-                    url: previewPushData.status.preview.deploy.url,
+                    url: previewPushData.status.preview.deploy.url || undefined,
                     scorecard: previewPushData.status.preview.scorecard,
                 },
-                production: previewPushData.status.preview.deploy.status !== 'failed'
+                production: previewPushData.status.preview.deploy.status !== 'failed' &&
+                    ((_c = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _c === void 0 ? void 0 : _c.production)
                     ? {
-                        status: (_d = (_c = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _c === void 0 ? void 0 : _c.production) === null || _d === void 0 ? void 0 : _d.deploy.status,
-                        url: (_f = (_e = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _e === void 0 ? void 0 : _e.production) === null || _f === void 0 ? void 0 : _f.deploy.url,
-                        scorecard: (_h = (_g = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _g === void 0 ? void 0 : _g.production) === null || _h === void 0 ? void 0 : _h.scorecard,
+                        status: prodPushData.status.production.deploy.status,
+                        url: prodPushData.status.production.deploy.url || '',
+                        scorecard: prodPushData.status.production.scorecard,
                     }
                     : undefined,
             };
@@ -12387,7 +12391,7 @@ function handlePushStatus(argv, config) {
                     process.stdout.write('\n');
                     throw new utils_1.DeploymentError(`${colors.red(`❌ Preview deploy failed.`)}`);
                 }
-                if (((_j = summary === null || summary === void 0 ? void 0 : summary.production) === null || _j === void 0 ? void 0 : _j.status) === 'failed') {
+                if (((_d = summary === null || summary === void 0 ? void 0 : summary.production) === null || _d === void 0 ? void 0 : _d.status) === 'failed') {
                     process.stdout.write('\n');
                     throw new utils_1.DeploymentError(`${colors.red(`❌ Production deploy failed.`)}`);
                 }
@@ -12399,6 +12403,7 @@ function handlePushStatus(argv, config) {
                 ? err.message
                 : `✗ Failed to get push status. Reason: ${err.message}\n`;
             (0, miscellaneous_1.exitWithError)(message);
+            return;
         }
     });
 }
@@ -75970,91 +75975,81 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
+const path_1 = __importDefault(__nccwpck_require__(71017));
 const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
 const push_1 = __nccwpck_require__(8893);
 const push_status_1 = __nccwpck_require__(74229);
 const openapi_core_1 = __nccwpck_require__(59307);
-const path_1 = __importDefault(__nccwpck_require__(71017));
+const set_commit_statuses_1 = __nccwpck_require__(55467);
 async function run() {
     try {
-        console.log('Action started!');
-        console.log('Parsing params...');
-        const rOrganization = core.getInput('organization');
-        const rProject = core.getInput('project');
-        const rDomain = core.getInput('domain') || 'https://app.cloud.redocly.com';
-        const files = core.getInput('files').split(' ');
-        const mountPath = core.getInput('mountPath');
-        const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
-        const redoclyConfigPath = core.getInput('redoclyConfigPath');
-        const namespace = github.context.payload?.repository?.owner?.login;
-        const repository = github.context.payload?.repository?.name;
-        const branch = github.context.ref.split('/').pop();
-        const defaultBranch = github.context.payload?.repository?.default_branch ||
-            github.context.payload?.repository?.master_branch;
-        const headCommit = github.context.payload?.head_commit;
-        const commitMessage = headCommit?.message;
-        const commitSha = headCommit?.id;
-        const commitUrl = headCommit?.url;
-        const commitAuthor = `${headCommit?.author?.name} <${headCommit?.author?.email}>`;
-        const commitCreatedAt = headCommit?.timestamp;
-        const absoluteFilePaths = files.map(_path => path_1.default.join(process.env.GITHUB_WORKSPACE || '', _path));
-        console.log('Push params', {
+        const inputData = parseInputData();
+        const ghEvent = parseEventData();
+        console.debug('Push arguments', {
             redocly: {
-                rOrganization,
-                rProject,
-                rDomain
+                redoclyOrgSlug: inputData.redoclyOrgSlug,
+                redoclyProjectSlug: inputData.redoclyProjectSlug,
+                redoclyDomain: inputData.redoclyDomain
             },
-            namespace,
-            repository,
-            branch,
-            defaultBranch,
-            commit: {
-                commitMessage,
-                commitSha,
-                commitUrl,
-                commitAuthor,
-                commitCreatedAt
-            },
-            files,
-            absoluteFilePaths,
-            mountPath,
-            maxExecutionTime
+            github: ghEvent,
+            pushParams: {
+                files: inputData.files,
+                mountPath: inputData.mountPath,
+                maxExecutionTime: inputData.maxExecutionTime,
+                configPath: inputData.configPath
+            }
         });
-        const config = await (0, openapi_core_1.loadConfig)({
-            configPath: redoclyConfigPath && process.env.GITHUB_WORKSPACE
-                ? path_1.default.join(process.env.GITHUB_WORKSPACE, redoclyConfigPath)
-                : undefined
-        });
-        console.log('configPath:', redoclyConfigPath);
-        console.log('redoclyConfig:', config);
+        const config = await getRedoclyConfig(inputData.configPath);
+        console.log('Config', config);
+        if (!ghEvent.branch ||
+            !ghEvent.defaultBranch ||
+            !ghEvent.commit.commitMessage ||
+            !ghEvent.commit.commitSha ||
+            !ghEvent.commit.commitAuthor ||
+            !ghEvent.namespace ||
+            !ghEvent.repository) {
+            throw new Error('Invalid GitHub event data');
+        }
         const pushData = await (0, push_1.handlePush)({
-            organization: rOrganization,
-            project: rProject,
-            domain: rDomain,
-            namespace,
-            repository,
-            branch,
-            'default-branch': defaultBranch,
-            message: commitMessage,
-            'commit-sha': commitSha,
-            'commit-url': commitUrl,
-            author: commitAuthor,
-            'created-at': commitCreatedAt,
-            'mount-path': mountPath,
-            files: absoluteFilePaths,
-            'max-execution-time': maxExecutionTime
+            organization: inputData.redoclyOrgSlug,
+            project: inputData.redoclyProjectSlug,
+            domain: inputData.redoclyDomain,
+            'mount-path': inputData.mountPath,
+            files: inputData.files,
+            'max-execution-time': inputData.maxExecutionTime,
+            namespace: ghEvent.namespace,
+            repository: ghEvent.repository,
+            branch: ghEvent.branch,
+            'default-branch': ghEvent.defaultBranch,
+            message: ghEvent.commit.commitMessage,
+            'commit-sha': ghEvent.commit.commitSha,
+            'commit-url': ghEvent.commit.commitUrl,
+            author: ghEvent.commit.commitAuthor,
+            'created-at': ghEvent.commit.commitCreatedAt
         }, config);
         if (pushData) {
             console.log('Push data:', pushData);
-            const handlePushStatusData = await (0, push_status_1.handlePushStatus)({
-                organization: rOrganization,
-                project: rProject,
+            const pushStatusData = await (0, push_status_1.handlePushStatus)({
+                organization: inputData.redoclyOrgSlug,
+                project: inputData.redoclyProjectSlug,
                 pushId: pushData.pushId,
-                domain: rDomain,
-                'max-execution-time': maxExecutionTime
+                domain: inputData.redoclyDomain,
+                'max-execution-time': inputData.maxExecutionTime,
+                wait: true
             }, config);
-            console.log('handlePushStatusData:', handlePushStatusData);
+            console.log('pushStatusData', pushStatusData);
+            if (!pushStatusData) {
+                throw new Error('Missing push status data');
+            }
+            await (0, set_commit_statuses_1.setCommitStatuses)({
+                data: pushStatusData,
+                owner: ghEvent.namespace,
+                repo: ghEvent.repository,
+                commitId: ghEvent.commit.commitSha,
+                organizationSlug: inputData.redoclyOrgSlug,
+                projectSlug: inputData.redoclyProjectSlug
+            });
             core.setOutput('pushId', pushData.pushId);
         }
         console.log('Action finished!');
@@ -76065,6 +76060,169 @@ async function run() {
     }
 }
 exports.run = run;
+function parseInputData() {
+    const redoclyOrgSlug = core.getInput('organization');
+    const redoclyProjectSlug = core.getInput('project');
+    const redoclyDomain = core.getInput('domain') || 'https://app.cloud.redocly.com';
+    const files = core.getInput('files').split(' ');
+    const mountPath = core.getInput('mountPath');
+    const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
+    const configPath = core.getInput('configPath');
+    const absoluteFilePaths = files.map(_path => path_1.default.join(process.env.GITHUB_WORKSPACE || '', _path));
+    return {
+        redoclyOrgSlug,
+        redoclyProjectSlug,
+        redoclyDomain,
+        files: absoluteFilePaths,
+        mountPath,
+        maxExecutionTime,
+        configPath
+    };
+}
+function parseEventData() {
+    const namespace = github.context.payload?.repository?.owner?.login;
+    const repository = github.context.payload?.repository?.name;
+    const branch = github.context.ref.split('/').pop();
+    const defaultBranch = github.context.payload?.repository?.default_branch ||
+        github.context.payload?.repository?.master_branch;
+    const headCommit = github.context.payload?.head_commit;
+    const commitMessage = headCommit?.message;
+    const commitSha = headCommit?.id;
+    const commitUrl = headCommit?.url;
+    const commitAuthor = headCommit?.author?.name && headCommit?.author?.email
+        ? `${headCommit?.author?.name} <${headCommit?.author?.email}>`
+        : undefined;
+    const commitCreatedAt = headCommit?.timestamp;
+    return {
+        namespace,
+        repository,
+        branch,
+        defaultBranch,
+        commit: {
+            commitMessage,
+            commitSha,
+            commitUrl,
+            commitAuthor,
+            commitCreatedAt
+        }
+    };
+}
+async function getRedoclyConfig(configPath) {
+    const redoclyConfig = await (0, openapi_core_1.loadConfig)({
+        configPath: configPath && process.env.GITHUB_WORKSPACE
+            ? path_1.default.join(process.env.GITHUB_WORKSPACE, configPath)
+            : undefined
+    });
+    return redoclyConfig;
+}
+
+
+/***/ }),
+
+/***/ 55467:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.setCommitStatuses = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const github = __importStar(__nccwpck_require__(95438));
+async function setCommitStatuses({ data, owner, repo, commitId, organizationSlug, projectSlug }) {
+    const addPrefix = 'true'; // TODO: get from input
+    const customPrefix = undefined; // TODO: get from input
+    const shouldAddPrefix = addPrefix === 'true';
+    const defaultPrefix = `${organizationSlug}/${projectSlug}`;
+    const prefixDelimiter = ' - ';
+    const statusPrefix = shouldAddPrefix
+        ? `${customPrefix || defaultPrefix}${prefixDelimiter}`
+        : '';
+    const githubToken = core.getInput('githubToken');
+    const octokit = github.getOctokit(githubToken);
+    if (data?.preview) {
+        await octokit.rest.repos.createCommitStatus({
+            owner,
+            repo,
+            sha: commitId,
+            state: mapDeploymentStateToGithubCommitState(data.preview.status),
+            target_url: data.preview.url,
+            context: `${statusPrefix}Preview`
+        });
+    }
+    if (data?.preview?.scorecard) {
+        Promise.all(data.preview.scorecard.map(async (scorecard) => {
+            await octokit.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: commitId,
+                state: mapDeploymentStateToGithubCommitState(scorecard.status),
+                target_url: scorecard.url,
+                context: `${statusPrefix}${scorecard.name}`,
+                description: scorecard.description
+            });
+        }));
+    }
+    if (data?.production) {
+        await octokit.rest.repos.createCommitStatus({
+            owner,
+            repo,
+            sha: commitId,
+            state: mapDeploymentStateToGithubCommitState(data.production.status),
+            target_url: data.production.url,
+            context: `${statusPrefix}Production`
+        });
+    }
+    if (data?.production?.scorecard) {
+        Promise.all(data.production.scorecard.map(async (scorecard) => {
+            await octokit.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: commitId,
+                state: mapDeploymentStateToGithubCommitState(scorecard.status),
+                target_url: scorecard.url,
+                context: `${statusPrefix}${scorecard.name}`,
+                description: scorecard.description
+            });
+        }));
+    }
+}
+exports.setCommitStatuses = setCommitStatuses;
+function mapDeploymentStateToGithubCommitState(state) {
+    switch (state) {
+        case 'pending':
+        case 'running':
+            return 'pending';
+        case 'success':
+            return 'success';
+        case 'failed':
+            return 'error';
+        default:
+            throw new TypeError(`Unknown deployment state: ${state}`);
+    }
+}
 
 
 /***/ }),

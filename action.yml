@@ -30,6 +30,10 @@ inputs:
   redoclyConfigPath:
     description: 'Path to the redocly config file'
     required: false
+  githubToken:
+    description: 'Token to authenticate with'
+    required: true
+    default: ${{ github.token }}
 
 # Define your outputs here.
 outputs:
