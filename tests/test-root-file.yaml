@@ -8,13 +8,14 @@ info:
     name: 'Test'
     url: 'test'
 
+security:
+  - basicAuth: []
+
 paths:
   /:
     get:
       operationId: test
       summary: Test
-      security:
-        - basicAuth: []
       responses:
         '200':
           description: ''
