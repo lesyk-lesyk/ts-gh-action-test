@@ -33,9 +33,8 @@
     "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "package:watch": "npm run package -- --watch",
     "test": "npx jest",
-    "compile-fake-server": "tsc ./src/__tests__/fake-api-server.ts --allowSyntheticDefaultImports",
-    "fake-server:start": "npm run compile-fake-server && pm2 start ./src/__tests__/fake-api-server.js",
-    "fake-server:stop": "pm2 stop all",
+    "compile-fake-server": "tsc -p tsconfig.fake-server.json",
+    "fake-server:start": "npm run compile-fake-server && pm2 start ./fake-api-server/.dist/fake-api-server.js",
     "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package"
   },
   "license": "MIT",

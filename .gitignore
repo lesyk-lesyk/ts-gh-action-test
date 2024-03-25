@@ -103,3 +103,6 @@ __tests__/runner/*
 .idea
 .vscode
 *.code-workspace
+
+# Custom
+fake-api-server/.dist
