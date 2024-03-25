@@ -69,15 +69,11 @@ jobs:
         id: test-action
         uses: ./
         with:
-          organization: 'test'
-          project: 'test'
+          organization: 'ci-test-org'
+          project: 'ci-test-org'
           domain: 'localhost:3050'
-          files: 'test1 test2'
+          files: 'tests/test-folder-1 tests/test-root-file.yaml'
           mountPath: 'test-folder'
-
-      - name: Stop fake server
-        id: fake-server-stop
-        run: npm run fake-server:stop
 
       - name: Print Output
         id: output
