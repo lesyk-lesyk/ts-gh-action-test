@@ -6,6 +6,12 @@ const port = 3000;
 app.get('*', (req, res) => {
   res.json({ test: 'test' });
 });
+app.post('*', (req, res) => {
+  res.json({ test: 'test' });
+});
+app.put('*', (req, res) => {
+  res.json({ test: 'test' });
+});
 
 app.listen(port, () => {
   // eslint-disable-next-line no-console
