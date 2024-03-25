@@ -1843,7 +1843,7 @@ class HttpClient {
         if (this._keepAlive && useProxy) {
             agent = this._proxyAgent;
         }
-        if (this._keepAlive && !useProxy) {
+        if (!useProxy) {
             agent = this._agent;
         }
         // if agent is already assigned use that agent.
@@ -1875,15 +1875,11 @@ class HttpClient {
             agent = tunnelAgent(agentOptions);
             this._proxyAgent = agent;
         }
-        // if reusing agent across request and tunneling agent isn't assigned create a new agent
-        if (this._keepAlive && !agent) {
+        // if tunneling agent isn't assigned create a new agent
+        if (!agent) {
             const options = { keepAlive: this._keepAlive, maxSockets };
             agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
             this._agent = agent;
-        }
-        // if not using private agent and tunnel agent isn't setup then use global agent
-        if (!agent) {
-            agent = usingSsl ? https.globalAgent : http.globalAgent;
         }
         if (usingSsl && this._ignoreSslError) {
             // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
@@ -7303,7 +7299,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getSchemaRefs = exports.resolveUrl = exports.normalizeId = exports._getFullPath = exports.getFullPath = exports.inlineRef = void 0;
 const util_1 = __nccwpck_require__(54313);
 const equal = __nccwpck_require__(28206);
-const traverse = __nccwpck_require__(55524);
+const traverse = __nccwpck_require__(52533);
 // TODO refactor to use keyword definitions
 const SIMPLE_INLINED = new Set([
     "type",
@@ -11935,107 +11931,6 @@ exports["default"] = def;
 
 /***/ }),
 
-/***/ 55524:
-/***/ ((module) => {
-
-"use strict";
-
-
-var traverse = module.exports = function (schema, opts, cb) {
-  // Legacy support for v0.3.1 and earlier.
-  if (typeof opts == 'function') {
-    cb = opts;
-    opts = {};
-  }
-
-  cb = opts.cb || cb;
-  var pre = (typeof cb == 'function') ? cb : cb.pre || function() {};
-  var post = cb.post || function() {};
-
-  _traverse(opts, pre, post, schema, '', schema);
-};
-
-
-traverse.keywords = {
-  additionalItems: true,
-  items: true,
-  contains: true,
-  additionalProperties: true,
-  propertyNames: true,
-  not: true,
-  if: true,
-  then: true,
-  else: true
-};
-
-traverse.arrayKeywords = {
-  items: true,
-  allOf: true,
-  anyOf: true,
-  oneOf: true
-};
-
-traverse.propsKeywords = {
-  $defs: true,
-  definitions: true,
-  properties: true,
-  patternProperties: true,
-  dependencies: true
-};
-
-traverse.skipKeywords = {
-  default: true,
-  enum: true,
-  const: true,
-  required: true,
-  maximum: true,
-  minimum: true,
-  exclusiveMaximum: true,
-  exclusiveMinimum: true,
-  multipleOf: true,
-  maxLength: true,
-  minLength: true,
-  pattern: true,
-  format: true,
-  maxItems: true,
-  minItems: true,
-  uniqueItems: true,
-  maxProperties: true,
-  minProperties: true
-};
-
-
-function _traverse(opts, pre, post, schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex) {
-  if (schema && typeof schema == 'object' && !Array.isArray(schema)) {
-    pre(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
-    for (var key in schema) {
-      var sch = schema[key];
-      if (Array.isArray(sch)) {
-        if (key in traverse.arrayKeywords) {
-          for (var i=0; i<sch.length; i++)
-            _traverse(opts, pre, post, sch[i], jsonPtr + '/' + key + '/' + i, rootSchema, jsonPtr, key, schema, i);
-        }
-      } else if (key in traverse.propsKeywords) {
-        if (sch && typeof sch == 'object') {
-          for (var prop in sch)
-            _traverse(opts, pre, post, sch[prop], jsonPtr + '/' + key + '/' + escapeJsonPtr(prop), rootSchema, jsonPtr, key, schema, prop);
-        }
-      } else if (key in traverse.keywords || (opts.allKeys && !(key in traverse.skipKeywords))) {
-        _traverse(opts, pre, post, sch, jsonPtr + '/' + key, rootSchema, jsonPtr, key, schema);
-      }
-    }
-    post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
-  }
-}
-
-
-function escapeJsonPtr(str) {
-  return str.replace(/~/g, '~0').replace(/\//g, '~1');
-}
-
-
-/***/ }),
-
 /***/ 84121:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -12297,13 +12192,11 @@ const js_utils_1 = __nccwpck_require__(19265);
 const utils_2 = __nccwpck_require__(46870);
 const RETRY_INTERVAL = 5000; // ms
 function handlePushStatus(argv, config) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
-        console.log('test1');
-        console.log('test2');
         const startedAt = performance.now();
         const spinner = new spinner_1.Spinner();
-        const { organization, project: projectId, pushId, wait, format } = argv;
+        const { organization, project: projectId, pushId, wait } = argv;
         const orgId = organization || config.organization;
         if (!orgId) {
             (0, miscellaneous_1.exitWithError)(`No organization provided, please use --organization option or specify the 'organization' field in the config file.`);
@@ -12325,21 +12218,18 @@ function handlePushStatus(argv, config) {
                 retryTimeout,
                 onRetry: (lastResult) => {
                     var _a;
-                    format === 'stylish' &&
-                        displayDeploymentAndBuildStatus({
-                            status: lastResult.status['preview'].deploy.status,
-                            previewUrl: lastResult.status['preview'].deploy.url,
-                            spinner,
-                            buildType: 'preview',
-                            wait,
-                        });
+                    displayDeploymentAndBuildStatus({
+                        status: lastResult.status['preview'].deploy.status,
+                        previewUrl: lastResult.status['preview'].deploy.url,
+                        spinner,
+                        buildType: 'preview',
+                        wait,
+                    });
                     (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                 },
             });
-            if (format === 'stylish') {
-                printPushStatus({ buildType: 'preview', spinner, wait, push: previewPushData });
-                printScorecard(previewPushData.status.preview.scorecard);
-            }
+            printPushStatus({ buildType: 'preview', spinner, wait, push: previewPushData });
+            printScorecard(previewPushData.status.preview.scorecard);
             const fetchProdPushDatCondition = previewPushData.isMainBranch &&
                 (wait ? previewPushData.status.preview.deploy.status === 'success' : true);
             const prodPushData = fetchProdPushDatCondition
@@ -12353,28 +12243,27 @@ function handlePushStatus(argv, config) {
                     retryTimeout,
                     onRetry: (lastResult) => {
                         var _a;
-                        format === 'stylish' &&
-                            displayDeploymentAndBuildStatus({
-                                status: lastResult.status['production'].deploy.status,
-                                previewUrl: lastResult.status['production'].deploy.url,
-                                spinner,
-                                buildType: 'production',
-                                wait,
-                            });
+                        displayDeploymentAndBuildStatus({
+                            status: lastResult.status['production'].deploy.status,
+                            previewUrl: lastResult.status['production'].deploy.url,
+                            spinner,
+                            buildType: 'production',
+                            wait,
+                        });
                         (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                     },
                 })
                 : null;
-            if (format === 'stylish') {
-                printPushStatus({ buildType: 'production', spinner, wait, push: prodPushData });
-                printScorecard((_b = (_a = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _a === void 0 ? void 0 : _a.production) === null || _b === void 0 ? void 0 : _b.scorecard);
-                printPushStatusInfo({ orgId, projectId, pushId, startedAt });
-            }
+            printPushStatus({ buildType: 'production', spinner, wait, push: prodPushData });
+            printScorecard((_b = (_a = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _a === void 0 ? void 0 : _a.production) === null || _b === void 0 ? void 0 : _b.scorecard);
+            printPushStatusInfo({ orgId, projectId, pushId, startedAt });
             const summary = {
                 preview: {
                     status: previewPushData.status.preview.deploy.status,
                     url: previewPushData.status.preview.deploy.url || undefined,
                     scorecard: previewPushData.status.preview.scorecard,
+                    isOutdated: previewPushData.isOutdated,
+                    noChanges: !previewPushData.hasChanges,
                 },
                 production: previewPushData.status.preview.deploy.status !== 'failed' &&
                     ((_c = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _c === void 0 ? void 0 : _c.production)
@@ -12382,20 +12271,11 @@ function handlePushStatus(argv, config) {
                         status: prodPushData.status.production.deploy.status,
                         url: prodPushData.status.production.deploy.url || '',
                         scorecard: prodPushData.status.production.scorecard,
+                        isOutdated: prodPushData.isOutdated,
+                        noChanges: !prodPushData.hasChanges,
                     }
                     : undefined,
             };
-            if (format === 'json') {
-                process.stdout.write(JSON.stringify(summary) + '\n');
-                if (summary.preview.status === 'failed') {
-                    process.stdout.write('\n');
-                    throw new utils_1.DeploymentError(`${colors.red(`❌ Preview deploy failed.`)}`);
-                }
-                if (((_d = summary === null || summary === void 0 ? void 0 : summary.production) === null || _d === void 0 ? void 0 : _d.status) === 'failed') {
-                    process.stdout.write('\n');
-                    throw new utils_1.DeploymentError(`${colors.red(`❌ Production deploy failed.`)}`);
-                }
-            }
             return summary;
         }
         catch (err) {
@@ -12462,7 +12342,7 @@ function displayDeploymentAndBuildStatus({ status, previewUrl, spinner, buildTyp
     switch (status) {
         case 'success':
             spinner.stop();
-            return process.stdout.write(`${colors.green(`🚀 ${(0, js_utils_1.capitalize)(buildType)} deploy finished.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(previewUrl)}\n`);
+            return process.stdout.write(`${colors.green(`🚀 ${(0, js_utils_1.capitalize)(buildType)} deploy succeed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(previewUrl)}\n`);
         case 'failed':
             spinner.stop();
             throw new utils_1.DeploymentError(`${colors.red(`❌ ${(0, js_utils_1.capitalize)(buildType)} deploy failed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(previewUrl)}`);
@@ -12523,10 +12403,10 @@ function handlePush(argv, config) {
             return (0, miscellaneous_1.exitWithError)(`No domain provided, please use --domain option or environment variable REDOCLY_AUTHORIZATION.`);
         }
         try {
-            const { 'commit-sha': commitSha, 'commit-url': commitUrl, 'default-branch': defaultBranch, 'wait-for-deployment': waitForDeployment, 'max-execution-time': maxExecutionTime, format: format, } = argv;
+            const { 'commit-sha': commitSha, 'commit-url': commitUrl, 'default-branch': defaultBranch, 'wait-for-deployment': waitForDeployment, 'max-execution-time': maxExecutionTime, } = argv;
             const author = parseCommitAuthor(argv.author);
             const apiKey = (0, api_1.getApiKeys)(domain);
-            const filesToUpload = collectFilesToPush(argv.files || argv.apis, format);
+            const filesToUpload = collectFilesToPush(argv.files || argv.apis);
             if (!filesToUpload.length) {
                 return (0, miscellaneous_1.printExecutionTime)('push', startedAt, `No files to upload`);
             }
@@ -12554,10 +12434,8 @@ function handlePush(argv, config) {
             filesToUpload.forEach((f) => {
                 process.stderr.write((0, colorette_1.green)(`✓ ${f.name}\n`));
             });
-            if (format === 'stylish') {
-                process.stdout.write('\n');
-                process.stdout.write(`Push ID: ${id}\n`);
-            }
+            process.stdout.write('\n');
+            process.stdout.write(`Push ID: ${id}\n`);
             if (waitForDeployment) {
                 process.stdout.write('\n');
                 yield (0, push_status_1.handlePushStatus)({
@@ -12567,7 +12445,6 @@ function handlePush(argv, config) {
                     wait: true,
                     domain,
                     'max-execution-time': maxExecutionTime,
-                    format,
                 }, config);
             }
             verbose &&
@@ -12595,21 +12472,21 @@ function parseCommitAuthor(author) {
         email: email.replace('>', '').trim(),
     };
 }
-function collectFilesToPush(files, format) {
+function collectFilesToPush(files) {
     const collectedFiles = {};
     for (const file of files) {
         if (fs.statSync(file).isDirectory()) {
             const dir = file;
             const fileList = getFilesList(dir, []);
-            fileList.forEach((f) => addFile(f, dir, format));
+            fileList.forEach((f) => addFile(f, dir));
         }
         else {
-            addFile(file, path.dirname(file), format);
+            addFile(file, path.dirname(file));
         }
     }
-    function addFile(filePath, fileDir, format) {
+    function addFile(filePath, fileDir) {
         const fileName = path.relative(fileDir, filePath);
-        if (collectedFiles[fileName] && format === 'stylish') {
+        if (collectedFiles[fileName]) {
             process.stdout.write((0, colorette_1.yellow)(`File ${collectedFiles[fileName]} is overwritten by ${filePath}\n`));
         }
         collectedFiles[fileName] = filePath;
@@ -13458,12 +13335,15 @@ function printLintTotals(totals, definitionsCount) {
     process.stderr.write('\n');
 }
 exports.printLintTotals = printLintTotals;
-function printConfigLintTotals(totals) {
+function printConfigLintTotals(totals, command) {
     if (totals.errors > 0) {
         process.stderr.write((0, colorette_1.red)(`❌ Your config has ${totals.errors} ${pluralize('error', totals.errors)}.`));
     }
     else if (totals.warnings > 0) {
         process.stderr.write((0, colorette_1.yellow)(`⚠️ Your config has ${totals.warnings} ${pluralize('warning', totals.warnings)}.\n`));
+    }
+    else if (command === 'check-config') {
+        process.stderr.write((0, colorette_1.green)('✅  Your config is valid.\n'));
     }
 }
 exports.printConfigLintTotals = printConfigLintTotals;
@@ -13859,6 +13739,1111 @@ const isNeedToBeCached = () => {
     }
 };
 
+
+/***/ }),
+
+/***/ 71643:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LayoutVariant = exports.REDOCLY_TEAMS_RBAC = exports.ApigeeDevOnboardingIntegrationAuthType = exports.AuthProviderType = exports.DEFAULT_TEAM_CLAIM_NAME = void 0;
+exports.DEFAULT_TEAM_CLAIM_NAME = 'https://redocly.com/sso/teams';
+var AuthProviderType;
+(function (AuthProviderType) {
+    AuthProviderType["OIDC"] = "OIDC";
+    AuthProviderType["SAML2"] = "SAML2";
+    AuthProviderType["BASIC"] = "BASIC";
+})(AuthProviderType || (exports.AuthProviderType = AuthProviderType = {}));
+var ApigeeDevOnboardingIntegrationAuthType;
+(function (ApigeeDevOnboardingIntegrationAuthType) {
+    ApigeeDevOnboardingIntegrationAuthType["SERVICE_ACCOUNT"] = "SERVICE_ACCOUNT";
+    ApigeeDevOnboardingIntegrationAuthType["OAUTH2"] = "OAUTH2";
+})(ApigeeDevOnboardingIntegrationAuthType || (exports.ApigeeDevOnboardingIntegrationAuthType = ApigeeDevOnboardingIntegrationAuthType = {}));
+exports.REDOCLY_TEAMS_RBAC = 'redocly::teams-rbac';
+var LayoutVariant;
+(function (LayoutVariant) {
+    LayoutVariant["STACKED"] = "stacked";
+    LayoutVariant["THREE_PANEL"] = "three-panel";
+})(LayoutVariant || (exports.LayoutVariant = LayoutVariant = {}));
+//# sourceMappingURL=constants.js.map
+
+/***/ }),
+
+/***/ 66656:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.productConfigOverrideSchema = exports.productThemeOverrideSchema = exports.themeConfigSchema = exports.catalogSchema = exports.scorecardConfigSchema = exports.catalogFilterSchema = exports.productConfigSchema = exports.googleAnalyticsConfigSchema = exports.productGoogleAnalyticsConfigSchema = exports.gtmAnalyticsConfigSchema = exports.segmentAnalyticsConfigSchema = exports.rudderstackAnalyticsConfigSchema = exports.heapAnalyticsConfigSchema = exports.fullstoryAnalyticsConfigSchema = exports.amplitudeAnalyticsConfigSchema = exports.markdownConfigSchema = void 0;
+const logoConfigSchema = {
+    type: 'object',
+    properties: {
+        image: { type: 'string' },
+        srcSet: { type: 'string' },
+        altText: { type: 'string' },
+        link: { type: 'string' },
+        favicon: { type: 'string' },
+    },
+    additionalProperties: false,
+};
+const hideConfigSchema = {
+    type: 'object',
+    properties: {
+        hide: { type: 'boolean' },
+    },
+    additionalProperties: false,
+};
+const scriptConfigSchema = {
+    type: 'object',
+    properties: {
+        src: { type: 'string' },
+        async: { type: 'boolean' },
+        crossorigin: { type: 'string' },
+        defer: { type: 'boolean' },
+        fetchpriority: { type: 'string' },
+        integrity: { type: 'string' },
+        module: { type: 'boolean' },
+        nomodule: { type: 'boolean' },
+        nonce: { type: 'string' },
+        referrerpolicy: { type: 'string' },
+        type: { type: 'string' },
+    },
+    required: ['src'],
+    additionalProperties: true,
+};
+const linksConfigSchema = {
+    type: 'object',
+    properties: {
+        href: { type: 'string' },
+        as: { type: 'string' },
+        crossorigin: { type: 'string' },
+        fetchpriority: { type: 'string' },
+        hreflang: { type: 'string' },
+        imagesizes: { type: 'string' },
+        imagesrcset: { type: 'string' },
+        integrity: { type: 'string' },
+        media: { type: 'string' },
+        prefetch: { type: 'string' },
+        referrerpolicy: { type: 'string' },
+        rel: { type: 'string' },
+        sizes: { type: 'string' },
+        title: { type: 'string' },
+        type: { type: 'string' },
+    },
+    required: ['href'],
+    additionalProperties: true,
+};
+exports.markdownConfigSchema = {
+    type: 'object',
+    properties: {
+        frontMatterKeysToResolve: {
+            type: 'array',
+            items: { type: 'string' },
+            default: ['image', 'links'],
+        },
+        partialsFolders: {
+            type: 'array',
+            items: { type: 'string' },
+            default: ['_partials'],
+        },
+        lastUpdatedBlock: {
+            type: 'object',
+            properties: Object.assign({ format: {
+                    type: 'string',
+                    enum: ['timeago', 'iso', 'long', 'short'],
+                    default: 'timeago',
+                }, locale: { type: 'string' } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+        toc: {
+            type: 'object',
+            properties: Object.assign({ header: { type: 'string', default: 'On this page' }, depth: { type: 'integer', default: 3, minimum: 1 } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+        editPage: {
+            type: 'object',
+            properties: Object.assign({ baseUrl: { type: 'string' } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+    },
+    additionalProperties: false,
+    default: {},
+};
+exports.amplitudeAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        apiKey: { type: 'string' },
+        head: { type: 'boolean' },
+        respectDNT: { type: 'boolean' },
+        exclude: { type: 'array', items: { type: 'string' } },
+        outboundClickEventName: { type: 'string' },
+        pageViewEventName: { type: 'string' },
+        amplitudeConfig: { type: 'object', additionalProperties: true },
+    },
+    additionalProperties: false,
+    required: ['apiKey'],
+};
+exports.fullstoryAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        orgId: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['orgId'],
+};
+exports.heapAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        appId: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['appId'],
+};
+exports.rudderstackAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        writeKey: { type: 'string', minLength: 10 },
+        trackPage: { type: 'boolean' },
+        dataPlaneUrl: { type: 'string' },
+        controlPlaneUrl: { type: 'string' },
+        sdkUrl: { type: 'string' },
+        loadOptions: { type: 'object', additionalProperties: true },
+    },
+    additionalProperties: false,
+    required: ['writeKey'],
+};
+exports.segmentAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        writeKey: { type: 'string', minLength: 10 },
+        trackPage: { type: 'boolean' },
+        includeTitleInPageCall: { type: 'boolean' },
+        host: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['writeKey'],
+};
+exports.gtmAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        trackingId: { type: 'string' },
+        gtmAuth: { type: 'string' },
+        gtmPreview: { type: 'string' },
+        defaultDataLayer: {},
+        dataLayerName: { type: 'string' },
+        enableWebVitalsTracking: { type: 'boolean' },
+        selfHostedOrigin: { type: 'string' },
+        pageViewEventName: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['trackingId'],
+};
+exports.productGoogleAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        trackingId: { type: 'string' },
+        conversionId: { type: 'string' },
+        floodlightId: { type: 'string' },
+        optimizeId: { type: 'string' },
+        exclude: { type: 'array', items: { type: 'string' } },
+    },
+    additionalProperties: false,
+    required: ['trackingId'],
+};
+exports.googleAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        trackingId: { type: 'string' },
+        conversionId: { type: 'string' },
+        floodlightId: { type: 'string' },
+        head: { type: 'boolean' },
+        respectDNT: { type: 'boolean' },
+        exclude: { type: 'array', items: { type: 'string' } },
+        optimizeId: { type: 'string' },
+        anonymizeIp: { type: 'boolean' },
+        cookieExpires: { type: 'number' },
+        // All enabled tracking configs
+        trackers: {
+            type: 'object',
+            additionalProperties: exports.productGoogleAnalyticsConfigSchema,
+        },
+    },
+    additionalProperties: false,
+    required: ['trackingId'],
+};
+const adobeAnalyticsConfigSchema = {
+    type: 'object',
+    properties: {
+        includeInDevelopment: { type: 'boolean' },
+        scriptUrl: { type: 'string' },
+        pageViewEventName: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['scriptUrl'],
+};
+const navItemSchema = {
+    type: 'object',
+    properties: {
+        page: { type: 'string' },
+        directory: { type: 'string' },
+        disconnect: { type: 'boolean', default: false },
+        group: { type: 'string' },
+        label: { type: 'string' },
+        href: { type: 'string' },
+        external: { type: 'boolean' },
+        labelTranslationKey: { type: 'string' },
+        groupTranslationKey: { type: 'string' },
+        icon: {
+            oneOf: [
+                { type: 'string' },
+                { type: 'object', properties: { srcSet: { type: 'string' } }, required: ['srcSet'] },
+            ],
+        },
+        separator: { type: 'string' },
+        separatorLine: { type: 'boolean' },
+        linePosition: {
+            type: 'string',
+            enum: ['top', 'bottom'],
+            default: 'top',
+        },
+        version: { type: 'string' },
+        menuStyle: { type: 'string', enum: ['drilldown'] },
+        expanded: { type: 'string', const: 'always' },
+        selectFirstItemOnExpand: { type: 'boolean' },
+        flatten: { type: 'boolean' },
+        linkedSidebars: {
+            type: 'array',
+            items: { type: 'string' },
+        },
+        // Allow users to eject the navbar and implement additional levels of nesting
+        items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+    },
+};
+const navItemsSchema = {
+    type: 'array',
+    items: Object.assign(Object.assign({}, navItemSchema), { properties: Object.assign(Object.assign({}, navItemSchema.properties), { items: { type: 'array', items: navItemSchema } }) }),
+};
+exports.productConfigSchema = {
+    type: 'object',
+    properties: {
+        name: { type: 'string' },
+        icon: { type: 'string' },
+        folder: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['name', 'folder'],
+};
+const suggestedPageSchema = {
+    type: 'object',
+    properties: {
+        page: { type: 'string' },
+        label: { type: 'string' },
+        labelTranslationKey: { type: 'string' },
+    },
+    required: ['page'],
+};
+exports.catalogFilterSchema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['title', 'property'],
+    properties: {
+        type: { type: 'string', enum: ['select', 'checkboxes', 'date-range'] },
+        title: { type: 'string' },
+        titleTranslationKey: { type: 'string' },
+        property: { type: 'string' },
+        parentFilter: { type: 'string' },
+        valuesMapping: { type: 'object', additionalProperties: { type: 'string' } },
+        missingCategoryName: { type: 'string' },
+        missingCategoryNameTranslationKey: { type: 'string' },
+        options: { type: 'array', items: { type: 'string' } },
+    },
+};
+exports.scorecardConfigSchema = {
+    type: 'object',
+    additionalProperties: true,
+    required: [],
+    properties: {
+        ignoreNonCompliant: { type: 'boolean', default: false },
+        teamMetadataProperty: {
+            type: 'object',
+            properties: {
+                property: { type: 'string' },
+                label: { type: 'string' },
+                default: { type: 'string' },
+            },
+        },
+        levels: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                    name: { type: 'string' },
+                    color: { type: 'string' },
+                    extends: { type: 'array', items: { type: 'string' } },
+                    rules: {
+                        type: 'object',
+                        additionalProperties: {
+                            oneOf: [{ type: 'string' }, { type: 'object' }],
+                        },
+                    },
+                },
+                additionalProperties: false,
+            },
+        },
+        targets: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['where'],
+                properties: {
+                    minimumLevel: { type: 'string' },
+                    where: {
+                        type: 'object',
+                        required: ['metadata'],
+                        properties: {
+                            metadata: { type: 'object', additionalProperties: { type: 'string' } },
+                        },
+                        additionalProperties: false,
+                    },
+                },
+                additionalProperties: false,
+            },
+        },
+    },
+};
+exports.catalogSchema = {
+    type: 'object',
+    additionalProperties: true,
+    required: ['slug', 'items'],
+    properties: {
+        slug: { type: 'string' },
+        filters: { type: 'array', items: exports.catalogFilterSchema },
+        groupByFirstFilter: { type: 'boolean' },
+        filterValuesCasing: {
+            type: 'string',
+            enum: ['sentence', 'original', 'lowercase', 'uppercase'],
+        },
+        items: navItemsSchema,
+        requiredPermission: { type: 'string' },
+        separateVersions: { type: 'boolean' },
+        title: { type: 'string' },
+        titleTranslationKey: { type: 'string' },
+        description: { type: 'string' },
+        descriptionTranslationKey: { type: 'string' },
+    },
+};
+const catalogsConfigSchema = {
+    type: 'object',
+    patternProperties: {
+        '.*': exports.catalogSchema,
+    },
+};
+exports.themeConfigSchema = {
+    type: 'object',
+    properties: {
+        imports: {
+            type: 'array',
+            items: { type: 'string' },
+            default: [],
+        },
+        logo: logoConfigSchema,
+        navbar: {
+            type: 'object',
+            properties: Object.assign({ items: navItemsSchema }, hideConfigSchema.properties),
+            additionalProperties: false,
+        },
+        products: {
+            type: 'object',
+            additionalProperties: exports.productConfigSchema,
+        },
+        footer: {
+            type: 'object',
+            properties: Object.assign({ items: navItemsSchema, copyrightText: { type: 'string' }, logo: hideConfigSchema }, hideConfigSchema.properties),
+            additionalProperties: false,
+        },
+        sidebar: {
+            type: 'object',
+            properties: Object.assign({ separatorLine: { type: 'boolean' }, linePosition: {
+                    type: 'string',
+                    enum: ['top', 'bottom'],
+                    default: 'bottom',
+                } }, hideConfigSchema.properties),
+            additionalProperties: false,
+        },
+        scripts: {
+            type: 'object',
+            properties: {
+                head: { type: 'array', items: scriptConfigSchema },
+                body: { type: 'array', items: scriptConfigSchema },
+            },
+            additionalProperties: false,
+        },
+        links: { type: 'array', items: linksConfigSchema },
+        feedback: {
+            type: 'object',
+            properties: {
+                hide: {
+                    type: 'boolean',
+                    default: false,
+                },
+                type: {
+                    type: 'string',
+                    enum: ['rating', 'sentiment', 'comment', 'reasons', 'mood', 'scale'],
+                    default: 'sentiment',
+                },
+                settings: Object.assign({ type: 'object', properties: {
+                        label: { type: 'string' },
+                        submitText: { type: 'string' },
+                        buttonText: { type: 'string' },
+                        component: {
+                            type: 'string',
+                            enum: ['radio', 'checkbox'],
+                            default: 'checkbox',
+                        },
+                        items: { type: 'array', items: { type: 'string' }, minItems: 1 },
+                        leftScaleLabel: { type: 'string' },
+                        rightScaleLabel: { type: 'string' },
+                        reasons: {
+                            type: 'object',
+                            properties: {
+                                hide: {
+                                    type: 'boolean',
+                                    default: false,
+                                },
+                                component: {
+                                    type: 'string',
+                                    enum: ['radio', 'checkbox'],
+                                    default: 'checkbox',
+                                },
+                                label: { type: 'string' },
+                                items: { type: 'array', items: { type: 'string' } },
+                            },
+                            additionalProperties: false,
+                        },
+                        comment: {
+                            type: 'object',
+                            properties: {
+                                hide: {
+                                    type: 'boolean',
+                                    default: false,
+                                },
+                                label: { type: 'string' },
+                                likeLabel: { type: 'string' },
+                                dislikeLabel: { type: 'string' },
+                                satisfiedLabel: { type: 'string' },
+                                neutralLabel: { type: 'string' },
+                                dissatisfiedLabel: { type: 'string' },
+                            },
+                            additionalProperties: false,
+                        },
+                    }, additionalProperties: false }, hideConfigSchema.properties),
+            },
+            additionalProperties: false,
+            default: {},
+        },
+        search: {
+            type: 'object',
+            properties: Object.assign({ placement: {
+                    type: 'string',
+                    default: 'navbar',
+                }, shortcuts: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    default: ['/'],
+                }, suggestedPages: {
+                    type: 'array',
+                    items: suggestedPageSchema,
+                } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+        colorMode: {
+            type: 'object',
+            properties: Object.assign({ ignoreDetection: { type: 'boolean' }, modes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    default: ['light', 'dark'],
+                } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+        navigation: {
+            type: 'object',
+            properties: {
+                nextButton: {
+                    type: 'object',
+                    properties: Object.assign({ text: { type: 'string', default: 'Next to {{label}}' } }, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: {},
+                },
+                previousButton: {
+                    type: 'object',
+                    properties: Object.assign({ text: { type: 'string', default: 'Back to {{label}}' } }, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: {},
+                },
+            },
+            additionalProperties: false,
+            default: {},
+        },
+        codeSnippet: {
+            type: 'object',
+            properties: {
+                elementFormat: { type: 'string', default: 'icon' },
+                copy: {
+                    type: 'object',
+                    properties: Object.assign({}, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: { hide: false },
+                },
+                report: {
+                    type: 'object',
+                    properties: Object.assign({ tooltipText: { type: 'string' }, buttonText: { type: 'string' }, label: { type: 'string' } }, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: { hide: false },
+                },
+                expand: {
+                    type: 'object',
+                    properties: Object.assign({}, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: { hide: false },
+                },
+                collapse: {
+                    type: 'object',
+                    properties: Object.assign({}, hideConfigSchema.properties),
+                    additionalProperties: false,
+                    default: { hide: false },
+                },
+            },
+            additionalProperties: false,
+            default: {},
+        },
+        markdown: exports.markdownConfigSchema,
+        openapi: { type: 'object', additionalProperties: true },
+        graphql: { type: 'object', additionalProperties: true },
+        analytics: {
+            type: 'object',
+            properties: {
+                adobe: adobeAnalyticsConfigSchema,
+                amplitude: exports.amplitudeAnalyticsConfigSchema,
+                fullstory: exports.fullstoryAnalyticsConfigSchema,
+                heap: exports.heapAnalyticsConfigSchema,
+                rudderstack: exports.rudderstackAnalyticsConfigSchema,
+                segment: exports.segmentAnalyticsConfigSchema,
+                gtm: exports.gtmAnalyticsConfigSchema,
+                ga: exports.googleAnalyticsConfigSchema,
+            },
+        },
+        userProfile: {
+            type: 'object',
+            properties: Object.assign({ loginLabel: { type: 'string', default: 'Login' }, logoutLabel: { type: 'string', default: 'Logout' }, menu: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            label: { type: 'string' },
+                            external: { type: 'boolean' },
+                            link: { type: 'string' },
+                            separatorLine: { type: 'boolean' },
+                        },
+                        additionalProperties: true,
+                    },
+                    default: [],
+                } }, hideConfigSchema.properties),
+            additionalProperties: false,
+            default: {},
+        },
+        versionPicker: {
+            type: 'object',
+            properties: {
+                hide: { type: 'boolean' },
+                showForUnversioned: {
+                    type: 'boolean',
+                },
+            },
+        },
+        breadcrumbs: {
+            type: 'object',
+            properties: {
+                hide: { type: 'boolean' },
+                prefixItems: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            label: { type: 'string' },
+                            labelTranslationKey: { type: 'string' },
+                            page: { type: 'string' },
+                        },
+                        additionalProperties: false,
+                        default: {},
+                    },
+                },
+            },
+            additionalProperties: false,
+            default: {},
+        },
+        catalog: catalogsConfigSchema,
+        scorecard: exports.scorecardConfigSchema,
+    },
+    additionalProperties: true,
+    default: {},
+};
+exports.productThemeOverrideSchema = {
+    type: 'object',
+    properties: {
+        logo: exports.themeConfigSchema.properties.logo,
+        navbar: exports.themeConfigSchema.properties.navbar,
+        footer: exports.themeConfigSchema.properties.footer,
+        sidebar: exports.themeConfigSchema.properties.sidebar,
+        search: exports.themeConfigSchema.properties.search,
+        codeSnippet: exports.themeConfigSchema.properties.codeSnippet,
+        breadcrumbs: exports.themeConfigSchema.properties.breadcrumbs,
+        analytics: {
+            type: 'object',
+            properties: {
+                ga: exports.productGoogleAnalyticsConfigSchema,
+            },
+        },
+    },
+    additionalProperties: true,
+    default: {},
+};
+exports.productConfigOverrideSchema = {
+    type: 'object',
+    properties: {
+        theme: exports.productThemeOverrideSchema,
+    },
+    additionalProperties: false,
+};
+//# sourceMappingURL=default-theme-config-schema.js.map
+
+/***/ }),
+
+/***/ 20223:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.REDOCLY_TEAMS_RBAC = exports.LayoutVariant = exports.AuthProviderType = exports.ApigeeDevOnboardingIntegrationAuthType = exports.productConfigOverrideSchema = exports.productThemeOverrideSchema = exports.rootRedoclyConfigSchema = exports.rbacConfigSchema = void 0;
+var root_config_schema_1 = __nccwpck_require__(63375);
+Object.defineProperty(exports, "rbacConfigSchema", ({ enumerable: true, get: function () { return root_config_schema_1.rbacConfigSchema; } }));
+Object.defineProperty(exports, "rootRedoclyConfigSchema", ({ enumerable: true, get: function () { return root_config_schema_1.rootRedoclyConfigSchema; } }));
+var default_theme_config_schema_1 = __nccwpck_require__(66656);
+Object.defineProperty(exports, "productThemeOverrideSchema", ({ enumerable: true, get: function () { return default_theme_config_schema_1.productThemeOverrideSchema; } }));
+Object.defineProperty(exports, "productConfigOverrideSchema", ({ enumerable: true, get: function () { return default_theme_config_schema_1.productConfigOverrideSchema; } }));
+__exportStar(__nccwpck_require__(16267), exports);
+__exportStar(__nccwpck_require__(26200), exports);
+var constants_1 = __nccwpck_require__(71643);
+Object.defineProperty(exports, "ApigeeDevOnboardingIntegrationAuthType", ({ enumerable: true, get: function () { return constants_1.ApigeeDevOnboardingIntegrationAuthType; } }));
+Object.defineProperty(exports, "AuthProviderType", ({ enumerable: true, get: function () { return constants_1.AuthProviderType; } }));
+Object.defineProperty(exports, "LayoutVariant", ({ enumerable: true, get: function () { return constants_1.LayoutVariant; } }));
+Object.defineProperty(exports, "REDOCLY_TEAMS_RBAC", ({ enumerable: true, get: function () { return constants_1.REDOCLY_TEAMS_RBAC; } }));
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 26200:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=portal-shared-types.js.map
+
+/***/ }),
+
+/***/ 63375:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.rootRedoclyConfigSchema = exports.redoclyConfigSchema = exports.i18ConfigSchema = exports.devOnboardingAdapterConfigSchema = exports.apigeeEdgeAdapterConfigSchema = exports.apigeeXAdapterConfigSchema = exports.apigeeAdapterAuthServiceAccountSchema = exports.apigeeAdapterAuthOauth2Schema = exports.graviteeAdapterConfigSchema = exports.rbacConfigSchema = exports.rbacScopeItemsSchema = exports.seoConfigSchema = exports.apiConfigSchema = exports.redirectsConfigSchema = exports.redirectConfigSchema = exports.ssoConfigSchema = exports.ssoOnPremConfigSchema = exports.authProviderConfigSchema = exports.basicAuthProviderConfigSchema = exports.saml2ProviderConfigSchema = exports.oidcProviderConfigSchema = exports.oidcIssuerMetadataSchema = void 0;
+const constants_1 = __nccwpck_require__(71643);
+const default_theme_config_schema_1 = __nccwpck_require__(66656);
+exports.oidcIssuerMetadataSchema = {
+    type: 'object',
+    properties: {
+        end_session_endpoint: { type: 'string' },
+        token_endpoint: { type: 'string' },
+        authorization_endpoint: { type: 'string' },
+        jwks_uri: { type: 'string' },
+    },
+    required: ['token_endpoint', 'authorization_endpoint'],
+    additionalProperties: true,
+};
+exports.oidcProviderConfigSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: constants_1.AuthProviderType.OIDC },
+        title: { type: 'string' },
+        pkce: { type: 'boolean', default: false },
+        configurationUrl: { type: 'string', minLength: 1 },
+        configuration: exports.oidcIssuerMetadataSchema,
+        clientId: { type: 'string', minLength: 1 },
+        clientSecret: { type: 'string', minLength: 0 },
+        teamsClaimName: { type: 'string' },
+        teamsClaimMap: { type: 'object', additionalProperties: { type: 'string' } },
+        defaultTeams: { type: 'array', items: { type: 'string' } },
+        scopes: { type: 'array', items: { type: 'string' } },
+        tokenExpirationTime: { type: 'number' },
+        authorizationRequestCustomParams: { type: 'object', additionalProperties: { type: 'string' } },
+        tokenRequestCustomParams: { type: 'object', additionalProperties: { type: 'string' } },
+        audience: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['type', 'clientId'],
+    oneOf: [{ required: ['configurationUrl'] }, { required: ['configuration'] }],
+    additionalProperties: false,
+};
+exports.saml2ProviderConfigSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: constants_1.AuthProviderType.SAML2 },
+        title: { type: 'string' },
+        issuerId: { type: 'string' },
+        entityId: { type: 'string' },
+        ssoUrl: { type: 'string' },
+        x509PublicCert: { type: 'string' },
+        teamsAttributeName: { type: 'string', default: constants_1.DEFAULT_TEAM_CLAIM_NAME },
+        teamsAttributeMap: { type: 'object', additionalProperties: { type: 'string' } },
+        defaultTeams: { type: 'array', items: { type: 'string' } },
+    },
+    additionalProperties: false,
+    required: ['type', 'issuerId', 'ssoUrl', 'x509PublicCert'],
+};
+exports.basicAuthProviderConfigSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: constants_1.AuthProviderType.BASIC },
+        title: { type: 'string' },
+        credentials: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    username: { type: 'string' },
+                    password: { type: 'string' },
+                    passwordHash: { type: 'string' },
+                    teams: { type: 'array', items: { type: 'string' } },
+                },
+                required: ['username'],
+                additionalProperties: false,
+            },
+        },
+    },
+    required: ['type', 'credentials'],
+    additionalProperties: false,
+};
+exports.authProviderConfigSchema = {
+    oneOf: [exports.oidcProviderConfigSchema, exports.saml2ProviderConfigSchema, exports.basicAuthProviderConfigSchema],
+    discriminator: { propertyName: 'type' },
+};
+exports.ssoOnPremConfigSchema = {
+    type: 'object',
+    additionalProperties: exports.authProviderConfigSchema,
+};
+exports.ssoConfigSchema = {
+    oneOf: [
+        {
+            type: 'array',
+            items: {
+                type: 'string',
+                enum: ['REDOCLY', 'CORPORATE', 'GUEST'],
+            },
+            uniqueItems: true,
+        },
+        {
+            type: 'string',
+            enum: ['REDOCLY', 'CORPORATE', 'GUEST'],
+        },
+    ],
+};
+exports.redirectConfigSchema = {
+    type: 'object',
+    properties: {
+        to: { type: 'string' },
+        type: { type: 'number', default: 301 },
+    },
+    additionalProperties: false,
+};
+exports.redirectsConfigSchema = {
+    type: 'object',
+    additionalProperties: exports.redirectConfigSchema,
+    default: {},
+};
+exports.apiConfigSchema = {
+    type: 'object',
+    properties: {
+        root: { type: 'string' },
+        output: { type: 'string', pattern: '(.ya?ml|.json)$' },
+        rbac: { type: 'object', additionalProperties: true },
+        theme: {
+            type: 'object',
+            properties: {
+                openapi: default_theme_config_schema_1.themeConfigSchema.properties.openapi,
+                graphql: default_theme_config_schema_1.themeConfigSchema.properties.graphql,
+            },
+            additionalProperties: false,
+        },
+        title: { type: 'string' },
+        metadata: { type: 'object', additionalProperties: true },
+        rules: { type: 'object', additionalProperties: true },
+        decorators: { type: 'object', additionalProperties: true },
+        preprocessors: { type: 'object', additionalProperties: true },
+    },
+    required: ['root'],
+};
+const metadataConfigSchema = {
+    type: 'object',
+    additionalProperties: true,
+};
+exports.seoConfigSchema = {
+    type: 'object',
+    properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        siteUrl: { type: 'string' },
+        image: { type: 'string' },
+        keywords: {
+            oneOf: [{ type: 'array', items: { type: 'string' } }, { type: 'string' }],
+        },
+        lang: { type: 'string' },
+        jsonLd: { type: 'object' },
+        meta: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string' },
+                    content: { type: 'string' },
+                },
+                required: ['name', 'content'],
+                additionalProperties: false,
+            },
+        },
+    },
+    additionalProperties: false,
+};
+exports.rbacScopeItemsSchema = {
+    type: 'object',
+    additionalProperties: { type: 'string' },
+};
+exports.rbacConfigSchema = {
+    type: 'object',
+    properties: {
+        teamNamePatterns: { type: 'array', items: { type: 'string' } },
+        teamFolders: { type: 'array', items: { type: 'string' } },
+        teamFoldersBaseRoles: exports.rbacScopeItemsSchema,
+        cms: exports.rbacScopeItemsSchema,
+        reunite: exports.rbacScopeItemsSchema,
+        content: {
+            type: 'object',
+            properties: {
+                '**': exports.rbacScopeItemsSchema,
+            },
+            additionalProperties: exports.rbacScopeItemsSchema,
+        },
+    },
+    additionalProperties: exports.rbacScopeItemsSchema,
+};
+exports.graviteeAdapterConfigSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: 'GRAVITEE' },
+        apiBaseUrl: { type: 'string' },
+        env: { type: 'string' },
+        allowApiProductsOutsideCatalog: { type: 'boolean', default: false },
+        stage: { type: 'string', default: 'non-production' },
+        auth: { type: 'object', properties: { static: { type: 'string' } } },
+    },
+    additionalProperties: false,
+    required: ['type', 'apiBaseUrl'],
+};
+exports.apigeeAdapterAuthOauth2Schema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: constants_1.ApigeeDevOnboardingIntegrationAuthType.OAUTH2 },
+        tokenEndpoint: { type: 'string' },
+        clientId: { type: 'string' },
+        clientSecret: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['type', 'tokenEndpoint', 'clientId', 'clientSecret'],
+};
+exports.apigeeAdapterAuthServiceAccountSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: constants_1.ApigeeDevOnboardingIntegrationAuthType.SERVICE_ACCOUNT },
+        serviceAccountEmail: { type: 'string' },
+        serviceAccountPrivateKey: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['type', 'serviceAccountEmail', 'serviceAccountPrivateKey'],
+};
+exports.apigeeXAdapterConfigSchema = {
+    type: 'object',
+    properties: {
+        type: { type: 'string', const: 'APIGEE_X' },
+        apiUrl: { type: 'string' },
+        stage: { type: 'string', default: 'non-production' },
+        organizationName: { type: 'string' },
+        ignoreApiProducts: { type: 'array', items: { type: 'string' } },
+        allowApiProductsOutsideCatalog: { type: 'boolean', default: false },
+        auth: {
+            type: 'object',
+            oneOf: [exports.apigeeAdapterAuthOauth2Schema, exports.apigeeAdapterAuthServiceAccountSchema],
+            discriminator: { propertyName: 'type' },
+        },
+    },
+    additionalProperties: false,
+    required: ['type', 'organizationName', 'auth'],
+};
+exports.apigeeEdgeAdapterConfigSchema = Object.assign(Object.assign({}, exports.apigeeXAdapterConfigSchema), { properties: Object.assign(Object.assign({}, exports.apigeeXAdapterConfigSchema.properties), { type: { type: 'string', const: 'APIGEE_EDGE' } }) });
+exports.devOnboardingAdapterConfigSchema = {
+    type: 'object',
+    oneOf: [exports.apigeeXAdapterConfigSchema, exports.apigeeEdgeAdapterConfigSchema, exports.graviteeAdapterConfigSchema],
+    discriminator: { propertyName: 'type' },
+};
+const devOnboardingConfigSchema = {
+    type: 'object',
+    required: ['adapters'],
+    additionalProperties: false,
+    properties: {
+        adapters: {
+            type: 'array',
+            items: exports.devOnboardingAdapterConfigSchema,
+        },
+    },
+};
+exports.i18ConfigSchema = {
+    type: 'object',
+    properties: {
+        defaultLocale: {
+            type: 'string',
+        },
+        locales: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    code: {
+                        type: 'string',
+                    },
+                    name: {
+                        type: 'string',
+                    },
+                },
+                required: ['code'],
+            },
+        },
+    },
+    additionalProperties: false,
+    required: ['defaultLocale'],
+};
+const responseHeaderSchema = {
+    type: 'object',
+    properties: {
+        name: { type: 'string' },
+        value: { type: 'string' },
+    },
+    additionalProperties: false,
+    required: ['name', 'value'],
+};
+exports.redoclyConfigSchema = {
+    type: 'object',
+    properties: {
+        licenseKey: { type: 'string' },
+        redirects: exports.redirectsConfigSchema,
+        seo: exports.seoConfigSchema,
+        rbac: exports.rbacConfigSchema,
+        responseHeaders: {
+            type: 'object',
+            additionalProperties: {
+                type: 'array',
+                items: responseHeaderSchema,
+            },
+        },
+        mockServer: {
+            type: 'object',
+            properties: {
+                off: { type: 'boolean', default: false },
+                position: { type: 'string', enum: ['first', 'last', 'replace', 'off'], default: 'first' },
+                strictExamples: { type: 'boolean', default: false },
+                errorIfForcedExampleNotFound: { type: 'boolean', default: false },
+                description: { type: 'string' },
+            },
+        },
+        apis: {
+            type: 'object',
+            additionalProperties: exports.apiConfigSchema,
+        },
+        ssoOnPrem: exports.ssoOnPremConfigSchema,
+        sso: exports.ssoConfigSchema,
+        residency: { type: 'string' },
+        developerOnboarding: devOnboardingConfigSchema,
+        i18n: exports.i18ConfigSchema,
+        metadata: metadataConfigSchema,
+        ignore: {
+            type: 'array',
+            items: {
+                type: 'string',
+            },
+        },
+        theme: default_theme_config_schema_1.themeConfigSchema,
+    },
+    default: { redirects: {} },
+    additionalProperties: true,
+};
+const environmentSchema = Object.assign(Object.assign({}, exports.redoclyConfigSchema), { additionalProperties: false });
+exports.rootRedoclyConfigSchema = Object.assign(Object.assign({}, exports.redoclyConfigSchema), { properties: Object.assign(Object.assign({ plugins: {
+            type: 'array',
+            items: { type: 'string' },
+        } }, exports.redoclyConfigSchema.properties), { env: {
+            type: 'object',
+            additionalProperties: environmentSchema, // TODO: if we want full validation we need to override apis, theme and the root
+        } }), default: {}, additionalProperties: false });
+//# sourceMappingURL=root-config-schema.js.map
+
+/***/ }),
+
+/***/ 16267:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+//# sourceMappingURL=types.js.map
 
 /***/ }),
 
@@ -15539,19 +16524,6 @@ exports.initRules = initRules;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.DEFAULT_TEAM_CLAIM_NAME = exports.ApigeeDevOnboardingIntegrationAuthType = exports.AuthProviderType = void 0;
-var AuthProviderType;
-(function (AuthProviderType) {
-    AuthProviderType["OIDC"] = "OIDC";
-    AuthProviderType["SAML2"] = "SAML2";
-    AuthProviderType["BASIC"] = "BASIC";
-})(AuthProviderType || (exports.AuthProviderType = AuthProviderType = {}));
-var ApigeeDevOnboardingIntegrationAuthType;
-(function (ApigeeDevOnboardingIntegrationAuthType) {
-    ApigeeDevOnboardingIntegrationAuthType["SERVICE_ACCOUNT"] = "SERVICE_ACCOUNT";
-    ApigeeDevOnboardingIntegrationAuthType["OAUTH2"] = "OAUTH2";
-})(ApigeeDevOnboardingIntegrationAuthType || (exports.ApigeeDevOnboardingIntegrationAuthType = ApigeeDevOnboardingIntegrationAuthType = {}));
-exports.DEFAULT_TEAM_CLAIM_NAME = 'https://redocly.com/sso/teams';
 
 
 /***/ }),
@@ -16487,7 +17459,9 @@ exports.env = exports.isBrowser = void 0;
 exports.isBrowser = 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-typeof window !== 'undefined' || typeof process === 'undefined'; // main and worker thread
+typeof window !== 'undefined' ||
+    typeof process === 'undefined' ||
+    (process === null || process === void 0 ? void 0 : process.platform) === 'browser'; // main and worker thread
 exports.env = exports.isBrowser ? {} : process.env || {};
 
 
@@ -24236,352 +25210,6 @@ exports.Oas3_1Types = Object.assign(Object.assign({}, oas3_1.Oas3Types), { Info,
 
 /***/ }),
 
-/***/ 16943:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.rootRedoclyConfigSchema = void 0;
-const config_1 = __nccwpck_require__(50627);
-const theme_config_1 = __nccwpck_require__(43913);
-const oidcIssuerMetadataSchema = {
-    type: 'object',
-    properties: {
-        end_session_endpoint: { type: 'string' },
-        token_endpoint: { type: 'string' },
-        authorization_endpoint: { type: 'string' },
-        jwks_uri: { type: 'string' },
-    },
-    required: ['token_endpoint', 'authorization_endpoint'],
-    additionalProperties: true,
-};
-const oidcProviderConfigSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: config_1.AuthProviderType.OIDC },
-        title: { type: 'string' },
-        pkce: { type: 'boolean', default: false },
-        configurationUrl: { type: 'string', minLength: 1 },
-        configuration: oidcIssuerMetadataSchema,
-        clientId: { type: 'string', minLength: 1 },
-        clientSecret: { type: 'string', minLength: 0 },
-        teamsClaimName: { type: 'string' },
-        teamsClaimMap: { type: 'object', additionalProperties: { type: 'string' } },
-        defaultTeams: { type: 'array', items: { type: 'string' } },
-        scopes: { type: 'array', items: { type: 'string' } },
-        tokenExpirationTime: { type: 'number' },
-        authorizationRequestCustomParams: { type: 'object', additionalProperties: { type: 'string' } },
-        tokenRequestCustomParams: { type: 'object', additionalProperties: { type: 'string' } },
-        audience: { type: 'array', items: { type: 'string' } },
-    },
-    required: ['type', 'clientId'],
-    oneOf: [{ required: ['configurationUrl'] }, { required: ['configuration'] }],
-    additionalProperties: false,
-};
-const saml2ProviderConfigSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: config_1.AuthProviderType.SAML2 },
-        title: { type: 'string' },
-        issuerId: { type: 'string' },
-        entityId: { type: 'string' },
-        ssoUrl: { type: 'string' },
-        x509PublicCert: { type: 'string' },
-        teamsAttributeName: { type: 'string', default: config_1.DEFAULT_TEAM_CLAIM_NAME },
-        teamsAttributeMap: { type: 'object', additionalProperties: { type: 'string' } },
-        defaultTeams: { type: 'array', items: { type: 'string' } },
-    },
-    additionalProperties: false,
-    required: ['type', 'issuerId', 'ssoUrl', 'x509PublicCert'],
-};
-const basicAuthProviderConfigSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: config_1.AuthProviderType.BASIC },
-        title: { type: 'string' },
-        credentials: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    username: { type: 'string' },
-                    password: { type: 'string' },
-                    passwordHash: { type: 'string' },
-                    teams: { type: 'array', items: { type: 'string' } },
-                },
-                required: ['username'],
-                additionalProperties: false,
-            },
-        },
-    },
-    required: ['type', 'credentials'],
-    additionalProperties: false,
-};
-const authProviderConfigSchema = {
-    oneOf: [oidcProviderConfigSchema, saml2ProviderConfigSchema, basicAuthProviderConfigSchema],
-    discriminator: { propertyName: 'type' },
-};
-const ssoOnPremConfigSchema = {
-    type: 'object',
-    additionalProperties: authProviderConfigSchema,
-};
-const ssoConfigSchema = {
-    oneOf: [
-        {
-            type: 'array',
-            items: {
-                type: 'string',
-                enum: ['REDOCLY', 'CORPORATE', 'GUEST'],
-            },
-            uniqueItems: true,
-        },
-        {
-            type: 'string',
-            enum: ['REDOCLY', 'CORPORATE', 'GUEST'],
-        },
-    ],
-};
-const redirectConfigSchema = {
-    type: 'object',
-    properties: {
-        to: { type: 'string' },
-        type: { type: 'number', default: 301 },
-    },
-    additionalProperties: false,
-};
-const redirectsConfigSchema = {
-    type: 'object',
-    additionalProperties: redirectConfigSchema,
-    default: {},
-};
-const apiConfigSchema = {
-    type: 'object',
-    properties: {
-        root: { type: 'string' },
-        output: { type: 'string', pattern: '(.ya?ml|.json)$' },
-        rbac: { type: 'object', additionalProperties: true },
-        theme: {
-            type: 'object',
-            properties: {
-                openapi: theme_config_1.themeConfigSchema.properties.openapi,
-                graphql: theme_config_1.themeConfigSchema.properties.graphql,
-            },
-            additionalProperties: false,
-        },
-        title: { type: 'string' },
-        metadata: { type: 'object', additionalProperties: true },
-        rules: { type: 'object', additionalProperties: true },
-        decorators: { type: 'object', additionalProperties: true },
-    },
-    required: ['root'],
-};
-const metadataConfigSchema = {
-    type: 'object',
-    additionalProperties: true,
-};
-const seoConfigSchema = {
-    type: 'object',
-    properties: {
-        title: { type: 'string' },
-        description: { type: 'string' },
-        siteUrl: { type: 'string' },
-        image: { type: 'string' },
-        keywords: {
-            oneOf: [{ type: 'array', items: { type: 'string' } }, { type: 'string' }],
-        },
-        lang: { type: 'string' },
-        jsonLd: { type: 'object' },
-        meta: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    name: { type: 'string' },
-                    content: { type: 'string' },
-                },
-                required: ['name', 'content'],
-                additionalProperties: false,
-            },
-        },
-    },
-    additionalProperties: false,
-};
-const rbacScopeItemsSchema = { type: 'object', additionalProperties: { type: 'string' } };
-const rbacConfigSchema = {
-    type: 'object',
-    properties: {
-        cms: rbacScopeItemsSchema,
-        content: {
-            type: 'object',
-            properties: {
-                '**': rbacScopeItemsSchema,
-            },
-            additionalProperties: rbacScopeItemsSchema,
-        },
-    },
-    additionalProperties: rbacScopeItemsSchema,
-};
-const graviteeAdapterConfigSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: 'GRAVITEE' },
-        apiBaseUrl: { type: 'string' },
-        env: { type: 'string' },
-        allowApiProductsOutsideCatalog: { type: 'boolean', default: false },
-        stage: { type: 'string', default: 'non-production' },
-        auth: { type: 'object', properties: { static: { type: 'string' } } },
-    },
-    additionalProperties: false,
-    required: ['type', 'apiBaseUrl'],
-};
-const apigeeAdapterAuthOauth2Schema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: config_1.ApigeeDevOnboardingIntegrationAuthType.OAUTH2 },
-        tokenEndpoint: { type: 'string' },
-        clientId: { type: 'string' },
-        clientSecret: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['type', 'tokenEndpoint', 'clientId', 'clientSecret'],
-};
-const apigeeAdapterAuthServiceAccountSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: config_1.ApigeeDevOnboardingIntegrationAuthType.SERVICE_ACCOUNT },
-        serviceAccountEmail: { type: 'string' },
-        serviceAccountPrivateKey: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['type', 'serviceAccountEmail', 'serviceAccountPrivateKey'],
-};
-const apigeeXAdapterConfigSchema = {
-    type: 'object',
-    properties: {
-        type: { type: 'string', const: 'APIGEE_X' },
-        apiUrl: { type: 'string' },
-        stage: { type: 'string', default: 'non-production' },
-        organizationName: { type: 'string' },
-        ignoreApiProducts: { type: 'array', items: { type: 'string' } },
-        allowApiProductsOutsideCatalog: { type: 'boolean', default: false },
-        auth: {
-            type: 'object',
-            oneOf: [apigeeAdapterAuthOauth2Schema, apigeeAdapterAuthServiceAccountSchema],
-            discriminator: { propertyName: 'type' },
-        },
-    },
-    additionalProperties: false,
-    required: ['type', 'organizationName', 'auth'],
-};
-const apigeeEdgeAdapterConfigSchema = Object.assign(Object.assign({}, apigeeXAdapterConfigSchema), { properties: Object.assign(Object.assign({}, apigeeXAdapterConfigSchema.properties), { type: { type: 'string', const: 'APIGEE_EDGE' } }) });
-const devOnboardingAdapterConfigSchema = {
-    type: 'object',
-    oneOf: [apigeeXAdapterConfigSchema, apigeeEdgeAdapterConfigSchema, graviteeAdapterConfigSchema],
-    discriminator: { propertyName: 'type' },
-};
-const devOnboardingConfigSchema = {
-    type: 'object',
-    required: ['adapters'],
-    additionalProperties: false,
-    properties: {
-        adapters: {
-            type: 'array',
-            items: devOnboardingAdapterConfigSchema,
-        },
-    },
-};
-const i18ConfigSchema = {
-    type: 'object',
-    properties: {
-        defaultLocale: {
-            type: 'string',
-        },
-        locales: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    code: {
-                        type: 'string',
-                    },
-                    name: {
-                        type: 'string',
-                    },
-                },
-                required: ['code'],
-            },
-        },
-    },
-    additionalProperties: false,
-    required: ['defaultLocale'],
-};
-const responseHeaderSchema = {
-    type: 'object',
-    properties: {
-        name: { type: 'string' },
-        value: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['name', 'value'],
-};
-const redoclyConfigSchema = {
-    type: 'object',
-    properties: {
-        licenseKey: { type: 'string' },
-        redirects: redirectsConfigSchema,
-        seo: seoConfigSchema,
-        rbac: rbacConfigSchema,
-        responseHeaders: {
-            type: 'object',
-            additionalProperties: {
-                type: 'array',
-                items: responseHeaderSchema,
-            },
-        },
-        mockServer: {
-            type: 'object',
-            properties: {
-                off: { type: 'boolean', default: false },
-                position: { type: 'string', enum: ['first', 'last', 'replace', 'off'], default: 'first' },
-                strictExamples: { type: 'boolean', default: false },
-                errorIfForcedExampleNotFound: { type: 'boolean', default: false },
-                description: { type: 'string' },
-            },
-        },
-        apis: {
-            type: 'object',
-            additionalProperties: apiConfigSchema,
-        },
-        ssoOnPrem: ssoOnPremConfigSchema,
-        sso: ssoConfigSchema,
-        residency: { type: 'string' },
-        developerOnboarding: devOnboardingConfigSchema,
-        i18n: i18ConfigSchema,
-        metadata: metadataConfigSchema,
-        ignore: {
-            type: 'array',
-            items: {
-                type: 'string',
-            },
-        },
-        theme: theme_config_1.themeConfigSchema,
-    },
-    default: { redirects: {} },
-    additionalProperties: true,
-};
-const environmentSchema = Object.assign(Object.assign({}, redoclyConfigSchema), { additionalProperties: false });
-exports.rootRedoclyConfigSchema = Object.assign(Object.assign({}, redoclyConfigSchema), { properties: Object.assign(Object.assign({ plugins: {
-            type: 'array',
-            items: { type: 'string' },
-        } }, redoclyConfigSchema.properties), { env: {
-            type: 'object',
-            additionalProperties: environmentSchema, // TODO: if we want full validation we need to override apis, theme and the root
-        } }), default: {}, additionalProperties: false });
-
-
-/***/ }),
-
 /***/ 74781:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
@@ -24589,7 +25217,7 @@ exports.rootRedoclyConfigSchema = Object.assign(Object.assign({}, redoclyConfigS
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ConfigTypes = exports.createConfigTypes = void 0;
-const portal_config_schema_1 = __nccwpck_require__(16943);
+const config_1 = __nccwpck_require__(20223);
 const _1 = __nccwpck_require__(14143);
 const utils_1 = __nccwpck_require__(75450);
 const json_schema_adapter_1 = __nccwpck_require__(85574);
@@ -25476,7 +26104,7 @@ const ConfigReferenceDocs = {
         preserveOriginalExtensionsName: { type: 'boolean' },
         markdownHeadingsAnchorLevel: { type: 'number' },
     },
-    additionalProperties: { type: 'string' },
+    additionalProperties: {},
 };
 const ConfigMockServer = {
     properties: {
@@ -25552,652 +26180,7 @@ const CoreConfigTypes = {
     AssertionDefinitionAssertions,
     AssertionDefinitionSubject,
 };
-exports.ConfigTypes = (0, exports.createConfigTypes)(portal_config_schema_1.rootRedoclyConfigSchema);
-
-
-/***/ }),
-
-/***/ 43913:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.productThemeOverrideSchema = exports.themeConfigSchema = void 0;
-const logoConfigSchema = {
-    type: 'object',
-    properties: {
-        image: { type: 'string' },
-        srcSet: { type: 'string' },
-        altText: { type: 'string' },
-        link: { type: 'string' },
-        favicon: { type: 'string' },
-    },
-    additionalProperties: false,
-};
-const hideConfigSchema = {
-    type: 'object',
-    properties: {
-        hide: { type: 'boolean' },
-    },
-    additionalProperties: false,
-};
-const scriptConfigSchema = {
-    type: 'object',
-    properties: {
-        src: { type: 'string' },
-        async: { type: 'boolean' },
-        crossorigin: { type: 'string' },
-        defer: { type: 'boolean' },
-        fetchpriority: { type: 'string' },
-        integrity: { type: 'string' },
-        module: { type: 'boolean' },
-        nomodule: { type: 'boolean' },
-        nonce: { type: 'string' },
-        referrerpolicy: { type: 'string' },
-        type: { type: 'string' },
-    },
-    required: ['src'],
-    additionalProperties: true,
-};
-const linksConfigSchema = {
-    type: 'object',
-    properties: {
-        href: { type: 'string' },
-        as: { type: 'string' },
-        crossorigin: { type: 'string' },
-        fetchpriority: { type: 'string' },
-        hreflang: { type: 'string' },
-        imagesizes: { type: 'string' },
-        imagesrcset: { type: 'string' },
-        integrity: { type: 'string' },
-        media: { type: 'string' },
-        prefetch: { type: 'string' },
-        referrerpolicy: { type: 'string' },
-        rel: { type: 'string' },
-        sizes: { type: 'string' },
-        title: { type: 'string' },
-        type: { type: 'string' },
-    },
-    required: ['href'],
-    additionalProperties: true,
-};
-const markdownConfigSchema = {
-    type: 'object',
-    properties: {
-        frontMatterKeysToResolve: {
-            type: 'array',
-            items: { type: 'string' },
-            default: ['image', 'links'],
-        },
-        partialsFolders: {
-            type: 'array',
-            items: { type: 'string' },
-            default: ['_partials'],
-        },
-        lastUpdatedBlock: {
-            type: 'object',
-            properties: Object.assign({ format: {
-                    type: 'string',
-                    enum: ['timeago', 'iso', 'long', 'short'],
-                    default: 'timeago',
-                }, locale: { type: 'string' } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-        toc: {
-            type: 'object',
-            properties: Object.assign({ header: { type: 'string', default: 'On this page' }, depth: { type: 'integer', default: 3, minimum: 1 } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-        editPage: {
-            type: 'object',
-            properties: Object.assign({ baseUrl: { type: 'string' } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-    },
-    additionalProperties: false,
-    default: {},
-};
-const amplitudeAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        apiKey: { type: 'string' },
-        head: { type: 'boolean' },
-        respectDNT: { type: 'boolean' },
-        exclude: { type: 'array', items: { type: 'string' } },
-        outboundClickEventName: { type: 'string' },
-        pageViewEventName: { type: 'string' },
-        amplitudeConfig: { type: 'object', additionalProperties: true },
-    },
-    additionalProperties: false,
-    required: ['apiKey'],
-};
-const fullstoryAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        orgId: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['orgId'],
-};
-const heapAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        appId: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['appId'],
-};
-const rudderstackAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        writeKey: { type: 'string', minLength: 10 },
-        trackPage: { type: 'boolean' },
-        dataPlaneUrl: { type: 'string' },
-        controlPlaneUrl: { type: 'string' },
-        sdkUrl: { type: 'string' },
-        loadOptions: { type: 'object', additionalProperties: true },
-    },
-    additionalProperties: false,
-    required: ['writeKey'],
-};
-const segmentAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        writeKey: { type: 'string', minLength: 10 },
-        trackPage: { type: 'boolean' },
-        includeTitleInPageCall: { type: 'boolean' },
-        host: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['writeKey'],
-};
-const gtmAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        trackingId: { type: 'string' },
-        gtmAuth: { type: 'string' },
-        gtmPreview: { type: 'string' },
-        defaultDataLayer: {},
-        dataLayerName: { type: 'string' },
-        enableWebVitalsTracking: { type: 'boolean' },
-        selfHostedOrigin: { type: 'string' },
-        pageViewEventName: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['trackingId'],
-};
-const productGoogleAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        trackingId: { type: 'string' },
-        conversionId: { type: 'string' },
-        floodlightId: { type: 'string' },
-        optimizeId: { type: 'string' },
-        exclude: { type: 'array', items: { type: 'string' } },
-    },
-    additionalProperties: false,
-    required: ['trackingId'],
-};
-const googleAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        trackingId: { type: 'string' },
-        conversionId: { type: 'string' },
-        floodlightId: { type: 'string' },
-        head: { type: 'boolean' },
-        respectDNT: { type: 'boolean' },
-        exclude: { type: 'array', items: { type: 'string' } },
-        optimizeId: { type: 'string' },
-        anonymizeIp: { type: 'boolean' },
-        cookieExpires: { type: 'number' },
-        // All enabled tracking configs
-        trackers: {
-            type: 'object',
-            additionalProperties: productGoogleAnalyticsConfigSchema,
-        },
-    },
-    additionalProperties: false,
-    required: ['trackingId'],
-};
-const adobeAnalyticsConfigSchema = {
-    type: 'object',
-    properties: {
-        includeInDevelopment: { type: 'boolean' },
-        scriptUrl: { type: 'string' },
-        pageViewEventName: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['scriptUrl'],
-};
-const navItemSchema = {
-    type: 'object',
-    properties: {
-        page: { type: 'string' },
-        directory: { type: 'string' },
-        disconnect: { type: 'boolean', default: false },
-        group: { type: 'string' },
-        label: { type: 'string' },
-        separator: { type: 'string' },
-        separatorLine: { type: 'boolean' },
-        linePosition: {
-            type: 'string',
-            enum: ['top', 'bottom'],
-            default: 'top',
-        },
-        version: { type: 'string' },
-        menuStyle: { type: 'string', enum: ['drilldown'] },
-        expanded: { type: 'string', const: 'always' },
-        selectFirstItemOnExpand: { type: 'boolean' },
-        flatten: { type: 'boolean' },
-        linkedSidebars: {
-            type: 'array',
-            items: { type: 'string' },
-        },
-    },
-};
-const navItemsSchema = {
-    type: 'array',
-    items: Object.assign(Object.assign({}, navItemSchema), { properties: Object.assign(Object.assign({}, navItemSchema.properties), { items: { type: 'array', items: navItemSchema } }) }),
-};
-const productConfigSchema = {
-    type: 'object',
-    properties: {
-        name: { type: 'string' },
-        icon: { type: 'string' },
-        folder: { type: 'string' },
-    },
-    additionalProperties: false,
-    required: ['name', 'folder'],
-};
-const suggestedPageSchema = {
-    type: 'object',
-    properties: {
-        page: { type: 'string' },
-        label: { type: 'string' },
-        labelTranslationKey: { type: 'string' },
-    },
-    required: ['page'],
-};
-const catalogFilterSchema = {
-    type: 'object',
-    additionalProperties: false,
-    required: ['title', 'property'],
-    properties: {
-        type: { type: 'string', enum: ['select', 'checkboxes', 'date-range'] },
-        title: { type: 'string' },
-        titleTranslationKey: { type: 'string' },
-        property: { type: 'string' },
-        parentFilter: { type: 'string' },
-        valuesMapping: { type: 'object', additionalProperties: { type: 'string' } },
-        missingCategoryName: { type: 'string' },
-        missingCategoryNameTranslationKey: { type: 'string' },
-        options: { type: 'array', items: { type: 'string' } },
-    },
-};
-const scorecardConfigSchema = {
-    type: 'object',
-    additionalProperties: true,
-    required: [],
-    properties: {
-        ignoreNonCompliant: { type: 'boolean', default: false },
-        teamMetadataProperty: {
-            type: 'object',
-            properties: {
-                property: { type: 'string' },
-                label: { type: 'string' },
-                default: { type: 'string' },
-            },
-        },
-        levels: {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['name'],
-                properties: {
-                    name: { type: 'string' },
-                    color: { type: 'string' },
-                    extends: { type: 'array', items: { type: 'string' } },
-                    rules: {
-                        type: 'object',
-                        additionalProperties: {
-                            oneOf: [{ type: 'string' }, { type: 'object' }],
-                        },
-                    },
-                },
-                additionalProperties: false,
-            },
-        },
-        targets: {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['where'],
-                properties: {
-                    minimumLevel: { type: 'string' },
-                    where: {
-                        type: 'object',
-                        required: ['metadata'],
-                        properties: {
-                            metadata: { type: 'object', additionalProperties: { type: 'string' } },
-                        },
-                        additionalProperties: false,
-                    },
-                },
-                additionalProperties: false,
-            },
-        },
-    },
-};
-const catalogSchema = {
-    type: 'object',
-    additionalProperties: true,
-    required: ['slug', 'items'],
-    properties: {
-        slug: { type: 'string' },
-        filters: { type: 'array', items: catalogFilterSchema },
-        groupByFirstFilter: { type: 'boolean' },
-        filterValuesCasing: {
-            type: 'string',
-            enum: ['sentence', 'original', 'lowercase', 'uppercase'],
-        },
-        items: navItemsSchema,
-        requiredPermission: { type: 'string' },
-        separateVersions: { type: 'boolean' },
-        title: { type: 'string' },
-        titleTranslationKey: { type: 'string' },
-        description: { type: 'string' },
-        descriptionTranslationKey: { type: 'string' },
-    },
-};
-const catalogsConfigSchema = {
-    type: 'object',
-    patternProperties: {
-        '.*': catalogSchema,
-    },
-};
-exports.themeConfigSchema = {
-    type: 'object',
-    properties: {
-        imports: {
-            type: 'array',
-            items: { type: 'string' },
-            default: [],
-        },
-        logo: logoConfigSchema,
-        navbar: {
-            type: 'object',
-            properties: Object.assign({ items: navItemsSchema }, hideConfigSchema.properties),
-            additionalProperties: false,
-        },
-        products: {
-            type: 'object',
-            additionalProperties: productConfigSchema,
-        },
-        footer: {
-            type: 'object',
-            properties: Object.assign({ items: navItemsSchema, copyrightText: { type: 'string' }, logo: hideConfigSchema }, hideConfigSchema.properties),
-            additionalProperties: false,
-        },
-        sidebar: {
-            type: 'object',
-            properties: Object.assign({ separatorLine: { type: 'boolean' }, linePosition: {
-                    type: 'string',
-                    enum: ['top', 'bottom'],
-                    default: 'bottom',
-                } }, hideConfigSchema.properties),
-            additionalProperties: false,
-        },
-        scripts: {
-            type: 'object',
-            properties: {
-                head: { type: 'array', items: scriptConfigSchema },
-                body: { type: 'array', items: scriptConfigSchema },
-            },
-            additionalProperties: false,
-        },
-        links: { type: 'array', items: linksConfigSchema },
-        feedback: {
-            type: 'object',
-            properties: {
-                hide: {
-                    type: 'boolean',
-                    default: false,
-                },
-                type: {
-                    type: 'string',
-                    enum: ['rating', 'sentiment', 'comment', 'reasons', 'mood', 'scale'],
-                    default: 'sentiment',
-                },
-                settings: Object.assign({ type: 'object', properties: {
-                        label: { type: 'string' },
-                        submitText: { type: 'string' },
-                        buttonText: { type: 'string' },
-                        component: {
-                            type: 'string',
-                            enum: ['radio', 'checkbox'],
-                            default: 'checkbox',
-                        },
-                        items: { type: 'array', items: { type: 'string' }, minItems: 1 },
-                        leftScaleLabel: { type: 'string' },
-                        rightScaleLabel: { type: 'string' },
-                        reasons: {
-                            type: 'object',
-                            properties: {
-                                hide: {
-                                    type: 'boolean',
-                                    default: false,
-                                },
-                                component: {
-                                    type: 'string',
-                                    enum: ['radio', 'checkbox'],
-                                    default: 'checkbox',
-                                },
-                                label: { type: 'string' },
-                                items: { type: 'array', items: { type: 'string' } },
-                            },
-                            additionalProperties: false,
-                        },
-                        comment: {
-                            type: 'object',
-                            properties: {
-                                hide: {
-                                    type: 'boolean',
-                                    default: false,
-                                },
-                                label: { type: 'string' },
-                                likeLabel: { type: 'string' },
-                                dislikeLabel: { type: 'string' },
-                                satisfiedLabel: { type: 'string' },
-                                neutralLabel: { type: 'string' },
-                                dissatisfiedLabel: { type: 'string' },
-                            },
-                            additionalProperties: false,
-                        },
-                    }, additionalProperties: false }, hideConfigSchema.properties),
-            },
-            additionalProperties: false,
-            default: {},
-        },
-        search: {
-            type: 'object',
-            properties: Object.assign({ placement: {
-                    type: 'string',
-                    default: 'navbar',
-                }, shortcuts: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    default: ['/'],
-                }, suggestedPages: {
-                    type: 'array',
-                    items: suggestedPageSchema,
-                } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-        colorMode: {
-            type: 'object',
-            properties: Object.assign({ ignoreDetection: { type: 'boolean' }, modes: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    default: ['light', 'dark'],
-                } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-        navigation: {
-            type: 'object',
-            properties: {
-                nextButton: {
-                    type: 'object',
-                    properties: Object.assign({ text: { type: 'string', default: 'Next to {{label}}' } }, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: {},
-                },
-                previousButton: {
-                    type: 'object',
-                    properties: Object.assign({ text: { type: 'string', default: 'Back to {{label}}' } }, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: {},
-                },
-            },
-            additionalProperties: false,
-            default: {},
-        },
-        codeSnippet: {
-            type: 'object',
-            properties: {
-                elementFormat: { type: 'string', default: 'icon' },
-                copy: {
-                    type: 'object',
-                    properties: Object.assign({}, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: { hide: false },
-                },
-                report: {
-                    type: 'object',
-                    properties: Object.assign({ tooltipText: { type: 'string' }, buttonText: { type: 'string' }, label: { type: 'string' } }, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: { hide: false },
-                },
-                expand: {
-                    type: 'object',
-                    properties: Object.assign({}, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: { hide: false },
-                },
-                collapse: {
-                    type: 'object',
-                    properties: Object.assign({}, hideConfigSchema.properties),
-                    additionalProperties: false,
-                    default: { hide: false },
-                },
-            },
-            additionalProperties: false,
-            default: {},
-        },
-        markdown: markdownConfigSchema,
-        openapi: { type: 'object', additionalProperties: true },
-        graphql: { type: 'object', additionalProperties: true },
-        analytics: {
-            type: 'object',
-            properties: {
-                adobe: adobeAnalyticsConfigSchema,
-                amplitude: amplitudeAnalyticsConfigSchema,
-                fullstory: fullstoryAnalyticsConfigSchema,
-                heap: heapAnalyticsConfigSchema,
-                rudderstack: rudderstackAnalyticsConfigSchema,
-                segment: segmentAnalyticsConfigSchema,
-                gtm: gtmAnalyticsConfigSchema,
-                ga: googleAnalyticsConfigSchema,
-            },
-        },
-        userProfile: {
-            type: 'object',
-            properties: Object.assign({ loginLabel: { type: 'string', default: 'Login' }, logoutLabel: { type: 'string', default: 'Logout' }, menu: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            label: { type: 'string' },
-                            external: { type: 'boolean' },
-                            link: { type: 'string' },
-                            separatorLine: { type: 'boolean' },
-                        },
-                        additionalProperties: true,
-                    },
-                    default: [],
-                } }, hideConfigSchema.properties),
-            additionalProperties: false,
-            default: {},
-        },
-        versionPicker: {
-            type: 'object',
-            properties: {
-                hide: { type: 'boolean' },
-                showForUnversioned: {
-                    type: 'boolean',
-                },
-            },
-        },
-        breadcrumbs: {
-            type: 'object',
-            properties: {
-                hide: { type: 'boolean' },
-                prefixItems: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            label: { type: 'string' },
-                            labelTranslationKey: { type: 'string' },
-                            page: { type: 'string' },
-                        },
-                        additionalProperties: false,
-                        default: {},
-                    },
-                },
-            },
-            additionalProperties: false,
-            default: {},
-        },
-        catalog: catalogsConfigSchema,
-        scorecard: scorecardConfigSchema,
-    },
-    additionalProperties: true,
-    default: {},
-};
-exports.productThemeOverrideSchema = {
-    type: 'object',
-    properties: {
-        logo: exports.themeConfigSchema.properties.logo,
-        navbar: exports.themeConfigSchema.properties.navbar,
-        footer: exports.themeConfigSchema.properties.footer,
-        sidebar: exports.themeConfigSchema.properties.sidebar,
-        search: exports.themeConfigSchema.properties.search,
-        codeSnippet: exports.themeConfigSchema.properties.codeSnippet,
-        breadcrumbs: exports.themeConfigSchema.properties.breadcrumbs,
-        analytics: {
-            type: 'object',
-            properties: {
-                ga: productGoogleAnalyticsConfigSchema,
-            },
-        },
-    },
-    additionalProperties: true,
-    default: {},
-};
+exports.ConfigTypes = (0, exports.createConfigTypes)(config_1.rootRedoclyConfigSchema);
 
 
 /***/ }),
@@ -26220,7 +26203,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.nextTick = exports.pickDefined = exports.keysOf = exports.identity = exports.isTruthy = exports.showErrorForDeprecatedField = exports.showWarningForDeprecatedField = exports.doesYamlFileExist = exports.isCustomRuleId = exports.getMatchingStatusCodeRange = exports.assignExisting = exports.isNotString = exports.isString = exports.isNotEmptyObject = exports.slash = exports.isPathParameter = exports.yamlAndJsonSyncReader = exports.readFileAsStringSync = exports.isSingular = exports.validateMimeTypeOAS3 = exports.validateMimeType = exports.splitCamelCaseIntoWords = exports.omitObjectProps = exports.pickObjectProps = exports.readFileFromUrl = exports.isEmptyArray = exports.isEmptyObject = exports.isPlainObject = exports.isDefined = exports.loadYaml = exports.popStack = exports.pushStack = exports.stringifyYaml = exports.parseYaml = void 0;
 const fs = __nccwpck_require__(57147);
 const path_1 = __nccwpck_require__(71017);
-const minimatch = __nccwpck_require__(30934);
+const minimatch = __nccwpck_require__(83973);
 const node_fetch_1 = __nccwpck_require__(80467);
 const pluralize = __nccwpck_require__(22522);
 const js_yaml_1 = __nccwpck_require__(97268);
@@ -26906,968 +26889,6 @@ function walkDocument(opts) {
     }
 }
 exports.walkDocument = walkDocument;
-
-
-/***/ }),
-
-/***/ 76734:
-/***/ ((module) => {
-
-const isWindows = typeof process === 'object' &&
-  process &&
-  process.platform === 'win32'
-module.exports = isWindows ? { sep: '\\' } : { sep: '/' }
-
-
-/***/ }),
-
-/***/ 30934:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-const minimatch = module.exports = (p, pattern, options = {}) => {
-  assertValidPattern(pattern)
-
-  // shortcut: comments match nothing.
-  if (!options.nocomment && pattern.charAt(0) === '#') {
-    return false
-  }
-
-  return new Minimatch(pattern, options).match(p)
-}
-
-module.exports = minimatch
-
-const path = __nccwpck_require__(76734)
-minimatch.sep = path.sep
-
-const GLOBSTAR = Symbol('globstar **')
-minimatch.GLOBSTAR = GLOBSTAR
-const expand = __nccwpck_require__(33717)
-
-const plTypes = {
-  '!': { open: '(?:(?!(?:', close: '))[^/]*?)'},
-  '?': { open: '(?:', close: ')?' },
-  '+': { open: '(?:', close: ')+' },
-  '*': { open: '(?:', close: ')*' },
-  '@': { open: '(?:', close: ')' }
-}
-
-// any single thing other than /
-// don't need to escape / when using new RegExp()
-const qmark = '[^/]'
-
-// * => any number of characters
-const star = qmark + '*?'
-
-// ** when dots are allowed.  Anything goes, except .. and .
-// not (^ or / followed by one or two dots followed by $ or /),
-// followed by anything, any number of times.
-const twoStarDot = '(?:(?!(?:\\\/|^)(?:\\.{1,2})($|\\\/)).)*?'
-
-// not a ^ or / followed by a dot,
-// followed by anything, any number of times.
-const twoStarNoDot = '(?:(?!(?:\\\/|^)\\.).)*?'
-
-// "abc" -> { a:true, b:true, c:true }
-const charSet = s => s.split('').reduce((set, c) => {
-  set[c] = true
-  return set
-}, {})
-
-// characters that need to be escaped in RegExp.
-const reSpecials = charSet('().*{}+?[]^$\\!')
-
-// characters that indicate we have to add the pattern start
-const addPatternStartSet = charSet('[.(')
-
-// normalizes slashes.
-const slashSplit = /\/+/
-
-minimatch.filter = (pattern, options = {}) =>
-  (p, i, list) => minimatch(p, pattern, options)
-
-const ext = (a, b = {}) => {
-  const t = {}
-  Object.keys(a).forEach(k => t[k] = a[k])
-  Object.keys(b).forEach(k => t[k] = b[k])
-  return t
-}
-
-minimatch.defaults = def => {
-  if (!def || typeof def !== 'object' || !Object.keys(def).length) {
-    return minimatch
-  }
-
-  const orig = minimatch
-
-  const m = (p, pattern, options) => orig(p, pattern, ext(def, options))
-  m.Minimatch = class Minimatch extends orig.Minimatch {
-    constructor (pattern, options) {
-      super(pattern, ext(def, options))
-    }
-  }
-  m.Minimatch.defaults = options => orig.defaults(ext(def, options)).Minimatch
-  m.filter = (pattern, options) => orig.filter(pattern, ext(def, options))
-  m.defaults = options => orig.defaults(ext(def, options))
-  m.makeRe = (pattern, options) => orig.makeRe(pattern, ext(def, options))
-  m.braceExpand = (pattern, options) => orig.braceExpand(pattern, ext(def, options))
-  m.match = (list, pattern, options) => orig.match(list, pattern, ext(def, options))
-
-  return m
-}
-
-
-
-
-
-// Brace expansion:
-// a{b,c}d -> abd acd
-// a{b,}c -> abc ac
-// a{0..3}d -> a0d a1d a2d a3d
-// a{b,c{d,e}f}g -> abg acdfg acefg
-// a{b,c}d{e,f}g -> abdeg acdeg abdeg abdfg
-//
-// Invalid sets are not expanded.
-// a{2..}b -> a{2..}b
-// a{b}c -> a{b}c
-minimatch.braceExpand = (pattern, options) => braceExpand(pattern, options)
-
-const braceExpand = (pattern, options = {}) => {
-  assertValidPattern(pattern)
-
-  // Thanks to Yeting Li <https://github.com/yetingli> for
-  // improving this regexp to avoid a ReDOS vulnerability.
-  if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
-    // shortcut. no need to expand.
-    return [pattern]
-  }
-
-  return expand(pattern)
-}
-
-const MAX_PATTERN_LENGTH = 1024 * 64
-const assertValidPattern = pattern => {
-  if (typeof pattern !== 'string') {
-    throw new TypeError('invalid pattern')
-  }
-
-  if (pattern.length > MAX_PATTERN_LENGTH) {
-    throw new TypeError('pattern is too long')
-  }
-}
-
-// parse a component of the expanded set.
-// At this point, no pattern may contain "/" in it
-// so we're going to return a 2d array, where each entry is the full
-// pattern, split on '/', and then turned into a regular expression.
-// A regexp is made at the end which joins each array with an
-// escaped /, and another full one which joins each regexp with |.
-//
-// Following the lead of Bash 4.1, note that "**" only has special meaning
-// when it is the *only* thing in a path portion.  Otherwise, any series
-// of * is equivalent to a single *.  Globstar behavior is enabled by
-// default, and can be disabled by setting options.noglobstar.
-const SUBPARSE = Symbol('subparse')
-
-minimatch.makeRe = (pattern, options) =>
-  new Minimatch(pattern, options || {}).makeRe()
-
-minimatch.match = (list, pattern, options = {}) => {
-  const mm = new Minimatch(pattern, options)
-  list = list.filter(f => mm.match(f))
-  if (mm.options.nonull && !list.length) {
-    list.push(pattern)
-  }
-  return list
-}
-
-// replace stuff like \* with *
-const globUnescape = s => s.replace(/\\(.)/g, '$1')
-const charUnescape = s => s.replace(/\\([^-\]])/g, '$1')
-const regExpEscape = s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
-const braExpEscape = s => s.replace(/[[\]\\]/g, '\\$&')
-
-class Minimatch {
-  constructor (pattern, options) {
-    assertValidPattern(pattern)
-
-    if (!options) options = {}
-
-    this.options = options
-    this.set = []
-    this.pattern = pattern
-    this.windowsPathsNoEscape = !!options.windowsPathsNoEscape ||
-      options.allowWindowsEscape === false
-    if (this.windowsPathsNoEscape) {
-      this.pattern = this.pattern.replace(/\\/g, '/')
-    }
-    this.regexp = null
-    this.negate = false
-    this.comment = false
-    this.empty = false
-    this.partial = !!options.partial
-
-    // make the set of regexps etc.
-    this.make()
-  }
-
-  debug () {}
-
-  make () {
-    const pattern = this.pattern
-    const options = this.options
-
-    // empty patterns and comments match nothing.
-    if (!options.nocomment && pattern.charAt(0) === '#') {
-      this.comment = true
-      return
-    }
-    if (!pattern) {
-      this.empty = true
-      return
-    }
-
-    // step 1: figure out negation, etc.
-    this.parseNegate()
-
-    // step 2: expand braces
-    let set = this.globSet = this.braceExpand()
-
-    if (options.debug) this.debug = (...args) => console.error(...args)
-
-    this.debug(this.pattern, set)
-
-    // step 3: now we have a set, so turn each one into a series of path-portion
-    // matching patterns.
-    // These will be regexps, except in the case of "**", which is
-    // set to the GLOBSTAR object for globstar behavior,
-    // and will not contain any / characters
-    set = this.globParts = set.map(s => s.split(slashSplit))
-
-    this.debug(this.pattern, set)
-
-    // glob --> regexps
-    set = set.map((s, si, set) => s.map(this.parse, this))
-
-    this.debug(this.pattern, set)
-
-    // filter out everything that didn't compile properly.
-    set = set.filter(s => s.indexOf(false) === -1)
-
-    this.debug(this.pattern, set)
-
-    this.set = set
-  }
-
-  parseNegate () {
-    if (this.options.nonegate) return
-
-    const pattern = this.pattern
-    let negate = false
-    let negateOffset = 0
-
-    for (let i = 0; i < pattern.length && pattern.charAt(i) === '!'; i++) {
-      negate = !negate
-      negateOffset++
-    }
-
-    if (negateOffset) this.pattern = pattern.slice(negateOffset)
-    this.negate = negate
-  }
-
-  // set partial to true to test if, for example,
-  // "/a/b" matches the start of "/*/b/*/d"
-  // Partial means, if you run out of file before you run
-  // out of pattern, then that's fine, as long as all
-  // the parts match.
-  matchOne (file, pattern, partial) {
-    var options = this.options
-
-    this.debug('matchOne',
-      { 'this': this, file: file, pattern: pattern })
-
-    this.debug('matchOne', file.length, pattern.length)
-
-    for (var fi = 0,
-        pi = 0,
-        fl = file.length,
-        pl = pattern.length
-        ; (fi < fl) && (pi < pl)
-        ; fi++, pi++) {
-      this.debug('matchOne loop')
-      var p = pattern[pi]
-      var f = file[fi]
-
-      this.debug(pattern, p, f)
-
-      // should be impossible.
-      // some invalid regexp stuff in the set.
-      /* istanbul ignore if */
-      if (p === false) return false
-
-      if (p === GLOBSTAR) {
-        this.debug('GLOBSTAR', [pattern, p, f])
-
-        // "**"
-        // a/**/b/**/c would match the following:
-        // a/b/x/y/z/c
-        // a/x/y/z/b/c
-        // a/b/x/b/x/c
-        // a/b/c
-        // To do this, take the rest of the pattern after
-        // the **, and see if it would match the file remainder.
-        // If so, return success.
-        // If not, the ** "swallows" a segment, and try again.
-        // This is recursively awful.
-        //
-        // a/**/b/**/c matching a/b/x/y/z/c
-        // - a matches a
-        // - doublestar
-        //   - matchOne(b/x/y/z/c, b/**/c)
-        //     - b matches b
-        //     - doublestar
-        //       - matchOne(x/y/z/c, c) -> no
-        //       - matchOne(y/z/c, c) -> no
-        //       - matchOne(z/c, c) -> no
-        //       - matchOne(c, c) yes, hit
-        var fr = fi
-        var pr = pi + 1
-        if (pr === pl) {
-          this.debug('** at the end')
-          // a ** at the end will just swallow the rest.
-          // We have found a match.
-          // however, it will not swallow /.x, unless
-          // options.dot is set.
-          // . and .. are *never* matched by **, for explosively
-          // exponential reasons.
-          for (; fi < fl; fi++) {
-            if (file[fi] === '.' || file[fi] === '..' ||
-              (!options.dot && file[fi].charAt(0) === '.')) return false
-          }
-          return true
-        }
-
-        // ok, let's see if we can swallow whatever we can.
-        while (fr < fl) {
-          var swallowee = file[fr]
-
-          this.debug('\nglobstar while', file, fr, pattern, pr, swallowee)
-
-          // XXX remove this slice.  Just pass the start index.
-          if (this.matchOne(file.slice(fr), pattern.slice(pr), partial)) {
-            this.debug('globstar found match!', fr, fl, swallowee)
-            // found a match.
-            return true
-          } else {
-            // can't swallow "." or ".." ever.
-            // can only swallow ".foo" when explicitly asked.
-            if (swallowee === '.' || swallowee === '..' ||
-              (!options.dot && swallowee.charAt(0) === '.')) {
-              this.debug('dot detected!', file, fr, pattern, pr)
-              break
-            }
-
-            // ** swallows a segment, and continue.
-            this.debug('globstar swallow a segment, and continue')
-            fr++
-          }
-        }
-
-        // no match was found.
-        // However, in partial mode, we can't say this is necessarily over.
-        // If there's more *pattern* left, then
-        /* istanbul ignore if */
-        if (partial) {
-          // ran out of file
-          this.debug('\n>>> no match, partial?', file, fr, pattern, pr)
-          if (fr === fl) return true
-        }
-        return false
-      }
-
-      // something other than **
-      // non-magic patterns just have to match exactly
-      // patterns with magic have been turned into regexps.
-      var hit
-      if (typeof p === 'string') {
-        hit = f === p
-        this.debug('string match', p, f, hit)
-      } else {
-        hit = f.match(p)
-        this.debug('pattern match', p, f, hit)
-      }
-
-      if (!hit) return false
-    }
-
-    // Note: ending in / means that we'll get a final ""
-    // at the end of the pattern.  This can only match a
-    // corresponding "" at the end of the file.
-    // If the file ends in /, then it can only match a
-    // a pattern that ends in /, unless the pattern just
-    // doesn't have any more for it. But, a/b/ should *not*
-    // match "a/b/*", even though "" matches against the
-    // [^/]*? pattern, except in partial mode, where it might
-    // simply not be reached yet.
-    // However, a/b/ should still satisfy a/*
-
-    // now either we fell off the end of the pattern, or we're done.
-    if (fi === fl && pi === pl) {
-      // ran out of pattern and filename at the same time.
-      // an exact hit!
-      return true
-    } else if (fi === fl) {
-      // ran out of file, but still had pattern left.
-      // this is ok if we're doing the match as part of
-      // a glob fs traversal.
-      return partial
-    } else /* istanbul ignore else */ if (pi === pl) {
-      // ran out of pattern, still have file left.
-      // this is only acceptable if we're on the very last
-      // empty segment of a file with a trailing slash.
-      // a/* should match a/b/
-      return (fi === fl - 1) && (file[fi] === '')
-    }
-
-    // should be unreachable.
-    /* istanbul ignore next */
-    throw new Error('wtf?')
-  }
-
-  braceExpand () {
-    return braceExpand(this.pattern, this.options)
-  }
-
-  parse (pattern, isSub) {
-    assertValidPattern(pattern)
-
-    const options = this.options
-
-    // shortcuts
-    if (pattern === '**') {
-      if (!options.noglobstar)
-        return GLOBSTAR
-      else
-        pattern = '*'
-    }
-    if (pattern === '') return ''
-
-    let re = ''
-    let hasMagic = false
-    let escaping = false
-    // ? => one single character
-    const patternListStack = []
-    const negativeLists = []
-    let stateChar
-    let inClass = false
-    let reClassStart = -1
-    let classStart = -1
-    let cs
-    let pl
-    let sp
-    // . and .. never match anything that doesn't start with .,
-    // even when options.dot is set.  However, if the pattern
-    // starts with ., then traversal patterns can match.
-    let dotTravAllowed = pattern.charAt(0) === '.'
-    let dotFileAllowed = options.dot || dotTravAllowed
-    const patternStart = () =>
-      dotTravAllowed
-        ? ''
-        : dotFileAllowed
-        ? '(?!(?:^|\\/)\\.{1,2}(?:$|\\/))'
-        : '(?!\\.)'
-    const subPatternStart = (p) =>
-      p.charAt(0) === '.'
-        ? ''
-        : options.dot
-        ? '(?!(?:^|\\/)\\.{1,2}(?:$|\\/))'
-        : '(?!\\.)'
-
-
-    const clearStateChar = () => {
-      if (stateChar) {
-        // we had some state-tracking character
-        // that wasn't consumed by this pass.
-        switch (stateChar) {
-          case '*':
-            re += star
-            hasMagic = true
-          break
-          case '?':
-            re += qmark
-            hasMagic = true
-          break
-          default:
-            re += '\\' + stateChar
-          break
-        }
-        this.debug('clearStateChar %j %j', stateChar, re)
-        stateChar = false
-      }
-    }
-
-    for (let i = 0, c; (i < pattern.length) && (c = pattern.charAt(i)); i++) {
-      this.debug('%s\t%s %s %j', pattern, i, re, c)
-
-      // skip over any that are escaped.
-      if (escaping) {
-        /* istanbul ignore next - completely not allowed, even escaped. */
-        if (c === '/') {
-          return false
-        }
-
-        if (reSpecials[c]) {
-          re += '\\'
-        }
-        re += c
-        escaping = false
-        continue
-      }
-
-      switch (c) {
-        /* istanbul ignore next */
-        case '/': {
-          // Should already be path-split by now.
-          return false
-        }
-
-        case '\\':
-          if (inClass && pattern.charAt(i + 1) === '-') {
-            re += c
-            continue
-          }
-
-          clearStateChar()
-          escaping = true
-        continue
-
-        // the various stateChar values
-        // for the "extglob" stuff.
-        case '?':
-        case '*':
-        case '+':
-        case '@':
-        case '!':
-          this.debug('%s\t%s %s %j <-- stateChar', pattern, i, re, c)
-
-          // all of those are literals inside a class, except that
-          // the glob [!a] means [^a] in regexp
-          if (inClass) {
-            this.debug('  in class')
-            if (c === '!' && i === classStart + 1) c = '^'
-            re += c
-            continue
-          }
-
-          // if we already have a stateChar, then it means
-          // that there was something like ** or +? in there.
-          // Handle the stateChar, then proceed with this one.
-          this.debug('call clearStateChar %j', stateChar)
-          clearStateChar()
-          stateChar = c
-          // if extglob is disabled, then +(asdf|foo) isn't a thing.
-          // just clear the statechar *now*, rather than even diving into
-          // the patternList stuff.
-          if (options.noext) clearStateChar()
-        continue
-
-        case '(': {
-          if (inClass) {
-            re += '('
-            continue
-          }
-
-          if (!stateChar) {
-            re += '\\('
-            continue
-          }
-
-          const plEntry = {
-            type: stateChar,
-            start: i - 1,
-            reStart: re.length,
-            open: plTypes[stateChar].open,
-            close: plTypes[stateChar].close,
-          }
-          this.debug(this.pattern, '\t', plEntry)
-          patternListStack.push(plEntry)
-          // negation is (?:(?!(?:js)(?:<rest>))[^/]*)
-          re += plEntry.open
-          // next entry starts with a dot maybe?
-          if (plEntry.start === 0 && plEntry.type !== '!') {
-            dotTravAllowed = true
-            re += subPatternStart(pattern.slice(i + 1))
-          }
-          this.debug('plType %j %j', stateChar, re)
-          stateChar = false
-          continue
-        }
-
-        case ')': {
-          const plEntry = patternListStack[patternListStack.length - 1]
-          if (inClass || !plEntry) {
-            re += '\\)'
-            continue
-          }
-          patternListStack.pop()
-
-          // closing an extglob
-          clearStateChar()
-          hasMagic = true
-          pl = plEntry
-          // negation is (?:(?!js)[^/]*)
-          // The others are (?:<pattern>)<type>
-          re += pl.close
-          if (pl.type === '!') {
-            negativeLists.push(Object.assign(pl, { reEnd: re.length }))
-          }
-          continue
-        }
-
-        case '|': {
-          const plEntry = patternListStack[patternListStack.length - 1]
-          if (inClass || !plEntry) {
-            re += '\\|'
-            continue
-          }
-
-          clearStateChar()
-          re += '|'
-          // next subpattern can start with a dot?
-          if (plEntry.start === 0 && plEntry.type !== '!') {
-            dotTravAllowed = true
-            re += subPatternStart(pattern.slice(i + 1))
-          }
-          continue
-        }
-
-        // these are mostly the same in regexp and glob
-        case '[':
-          // swallow any state-tracking char before the [
-          clearStateChar()
-
-          if (inClass) {
-            re += '\\' + c
-            continue
-          }
-
-          inClass = true
-          classStart = i
-          reClassStart = re.length
-          re += c
-        continue
-
-        case ']':
-          //  a right bracket shall lose its special
-          //  meaning and represent itself in
-          //  a bracket expression if it occurs
-          //  first in the list.  -- POSIX.2 2.8.3.2
-          if (i === classStart + 1 || !inClass) {
-            re += '\\' + c
-            continue
-          }
-
-          // split where the last [ was, make sure we don't have
-          // an invalid re. if so, re-walk the contents of the
-          // would-be class to re-translate any characters that
-          // were passed through as-is
-          // TODO: It would probably be faster to determine this
-          // without a try/catch and a new RegExp, but it's tricky
-          // to do safely.  For now, this is safe and works.
-          cs = pattern.substring(classStart + 1, i)
-          try {
-            RegExp('[' + braExpEscape(charUnescape(cs)) + ']')
-            // looks good, finish up the class.
-            re += c
-          } catch (er) {
-            // out of order ranges in JS are errors, but in glob syntax,
-            // they're just a range that matches nothing.
-            re = re.substring(0, reClassStart) + '(?:$.)' // match nothing ever
-          }
-          hasMagic = true
-          inClass = false
-        continue
-
-        default:
-          // swallow any state char that wasn't consumed
-          clearStateChar()
-
-          if (reSpecials[c] && !(c === '^' && inClass)) {
-            re += '\\'
-          }
-
-          re += c
-          break
-
-      } // switch
-    } // for
-
-    // handle the case where we left a class open.
-    // "[abc" is valid, equivalent to "\[abc"
-    if (inClass) {
-      // split where the last [ was, and escape it
-      // this is a huge pita.  We now have to re-walk
-      // the contents of the would-be class to re-translate
-      // any characters that were passed through as-is
-      cs = pattern.slice(classStart + 1)
-      sp = this.parse(cs, SUBPARSE)
-      re = re.substring(0, reClassStart) + '\\[' + sp[0]
-      hasMagic = hasMagic || sp[1]
-    }
-
-    // handle the case where we had a +( thing at the *end*
-    // of the pattern.
-    // each pattern list stack adds 3 chars, and we need to go through
-    // and escape any | chars that were passed through as-is for the regexp.
-    // Go through and escape them, taking care not to double-escape any
-    // | chars that were already escaped.
-    for (pl = patternListStack.pop(); pl; pl = patternListStack.pop()) {
-      let tail
-      tail = re.slice(pl.reStart + pl.open.length)
-      this.debug('setting tail', re, pl)
-      // maybe some even number of \, then maybe 1 \, followed by a |
-      tail = tail.replace(/((?:\\{2}){0,64})(\\?)\|/g, (_, $1, $2) => {
-        /* istanbul ignore else - should already be done */
-        if (!$2) {
-          // the | isn't already escaped, so escape it.
-          $2 = '\\'
-        }
-
-        // need to escape all those slashes *again*, without escaping the
-        // one that we need for escaping the | character.  As it works out,
-        // escaping an even number of slashes can be done by simply repeating
-        // it exactly after itself.  That's why this trick works.
-        //
-        // I am sorry that you have to see this.
-        return $1 + $1 + $2 + '|'
-      })
-
-      this.debug('tail=%j\n   %s', tail, tail, pl, re)
-      const t = pl.type === '*' ? star
-        : pl.type === '?' ? qmark
-        : '\\' + pl.type
-
-      hasMagic = true
-      re = re.slice(0, pl.reStart) + t + '\\(' + tail
-    }
-
-    // handle trailing things that only matter at the very end.
-    clearStateChar()
-    if (escaping) {
-      // trailing \\
-      re += '\\\\'
-    }
-
-    // only need to apply the nodot start if the re starts with
-    // something that could conceivably capture a dot
-    const addPatternStart = addPatternStartSet[re.charAt(0)]
-
-    // Hack to work around lack of negative lookbehind in JS
-    // A pattern like: *.!(x).!(y|z) needs to ensure that a name
-    // like 'a.xyz.yz' doesn't match.  So, the first negative
-    // lookahead, has to look ALL the way ahead, to the end of
-    // the pattern.
-    for (let n = negativeLists.length - 1; n > -1; n--) {
-      const nl = negativeLists[n]
-
-      const nlBefore = re.slice(0, nl.reStart)
-      const nlFirst = re.slice(nl.reStart, nl.reEnd - 8)
-      let nlAfter = re.slice(nl.reEnd)
-      const nlLast = re.slice(nl.reEnd - 8, nl.reEnd) + nlAfter
-
-      // Handle nested stuff like *(*.js|!(*.json)), where open parens
-      // mean that we should *not* include the ) in the bit that is considered
-      // "after" the negated section.
-      const closeParensBefore = nlBefore.split(')').length
-      const openParensBefore = nlBefore.split('(').length - closeParensBefore
-      let cleanAfter = nlAfter
-      for (let i = 0; i < openParensBefore; i++) {
-        cleanAfter = cleanAfter.replace(/\)[+*?]?/, '')
-      }
-      nlAfter = cleanAfter
-
-      const dollar = nlAfter === '' && isSub !== SUBPARSE ? '(?:$|\\/)' : ''
-
-      re = nlBefore + nlFirst + nlAfter + dollar + nlLast
-    }
-
-    // if the re is not "" at this point, then we need to make sure
-    // it doesn't match against an empty path part.
-    // Otherwise a/* will match a/, which it should not.
-    if (re !== '' && hasMagic) {
-      re = '(?=.)' + re
-    }
-
-    if (addPatternStart) {
-      re = patternStart() + re
-    }
-
-    // parsing just a piece of a larger pattern.
-    if (isSub === SUBPARSE) {
-      return [re, hasMagic]
-    }
-
-    // if it's nocase, and the lcase/uppercase don't match, it's magic
-    if (options.nocase && !hasMagic) {
-      hasMagic = pattern.toUpperCase() !== pattern.toLowerCase()
-    }
-
-    // skip the regexp for non-magical patterns
-    // unescape anything in it, though, so that it'll be
-    // an exact match against a file etc.
-    if (!hasMagic) {
-      return globUnescape(pattern)
-    }
-
-    const flags = options.nocase ? 'i' : ''
-    try {
-      return Object.assign(new RegExp('^' + re + '$', flags), {
-        _glob: pattern,
-        _src: re,
-      })
-    } catch (er) /* istanbul ignore next - should be impossible */ {
-      // If it was an invalid regular expression, then it can't match
-      // anything.  This trick looks for a character after the end of
-      // the string, which is of course impossible, except in multi-line
-      // mode, but it's not a /m regex.
-      return new RegExp('$.')
-    }
-  }
-
-  makeRe () {
-    if (this.regexp || this.regexp === false) return this.regexp
-
-    // at this point, this.set is a 2d array of partial
-    // pattern strings, or "**".
-    //
-    // It's better to use .match().  This function shouldn't
-    // be used, really, but it's pretty convenient sometimes,
-    // when you just want to work with a regex.
-    const set = this.set
-
-    if (!set.length) {
-      this.regexp = false
-      return this.regexp
-    }
-    const options = this.options
-
-    const twoStar = options.noglobstar ? star
-      : options.dot ? twoStarDot
-      : twoStarNoDot
-    const flags = options.nocase ? 'i' : ''
-
-    // coalesce globstars and regexpify non-globstar patterns
-    // if it's the only item, then we just do one twoStar
-    // if it's the first, and there are more, prepend (\/|twoStar\/)? to next
-    // if it's the last, append (\/twoStar|) to previous
-    // if it's in the middle, append (\/|\/twoStar\/) to previous
-    // then filter out GLOBSTAR symbols
-    let re = set.map(pattern => {
-      pattern = pattern.map(p =>
-        typeof p === 'string' ? regExpEscape(p)
-        : p === GLOBSTAR ? GLOBSTAR
-        : p._src
-      ).reduce((set, p) => {
-        if (!(set[set.length - 1] === GLOBSTAR && p === GLOBSTAR)) {
-          set.push(p)
-        }
-        return set
-      }, [])
-      pattern.forEach((p, i) => {
-        if (p !== GLOBSTAR || pattern[i-1] === GLOBSTAR) {
-          return
-        }
-        if (i === 0) {
-          if (pattern.length > 1) {
-            pattern[i+1] = '(?:\\\/|' + twoStar + '\\\/)?' + pattern[i+1]
-          } else {
-            pattern[i] = twoStar
-          }
-        } else if (i === pattern.length - 1) {
-          pattern[i-1] += '(?:\\\/|' + twoStar + ')?'
-        } else {
-          pattern[i-1] += '(?:\\\/|\\\/' + twoStar + '\\\/)' + pattern[i+1]
-          pattern[i+1] = GLOBSTAR
-        }
-      })
-      return pattern.filter(p => p !== GLOBSTAR).join('/')
-    }).join('|')
-
-    // must match entire pattern
-    // ending in a * or ** will make it less strict.
-    re = '^(?:' + re + ')$'
-
-    // can match anything, as long as it's not this.
-    if (this.negate) re = '^(?!' + re + ').*$'
-
-    try {
-      this.regexp = new RegExp(re, flags)
-    } catch (ex) /* istanbul ignore next - should be impossible */ {
-      this.regexp = false
-    }
-    return this.regexp
-  }
-
-  match (f, partial = this.partial) {
-    this.debug('match', f, this.pattern)
-    // short-circuit in the case of busted things.
-    // comments, etc.
-    if (this.comment) return false
-    if (this.empty) return f === ''
-
-    if (f === '/' && partial) return true
-
-    const options = this.options
-
-    // windows: need to use /, not \
-    if (path.sep !== '/') {
-      f = f.split(path.sep).join('/')
-    }
-
-    // treat the test path as a set of pathparts.
-    f = f.split(slashSplit)
-    this.debug(this.pattern, 'split', f)
-
-    // just ONE of the pattern sets in this.set needs to match
-    // in order for it to be valid.  If negating, then just one
-    // match means that we have failed.
-    // Either way, return on the first hit.
-
-    const set = this.set
-    this.debug(this.pattern, 'set', set)
-
-    // Find the basename of the path by looking for the last non-empty segment
-    let filename
-    for (let i = f.length - 1; i >= 0; i--) {
-      filename = f[i]
-      if (filename) break
-    }
-
-    for (let i = 0; i < set.length; i++) {
-      const pattern = set[i]
-      let file = f
-      if (options.matchBase && pattern.length === 1) {
-        file = [filename]
-      }
-      const hit = this.matchOne(file, pattern, partial)
-      if (hit) {
-        if (options.flipNegate) return true
-        return !this.negate
-      }
-    }
-
-    // didn't get any hits.  this is success if it's a negative
-    // pattern, failure otherwise.
-    if (options.flipNegate) return false
-    return this.negate
-  }
-
-  static defaults (def) {
-    return minimatch.defaults(def).Minimatch
-  }
-}
-
-minimatch.Minimatch = Minimatch
 
 
 /***/ }),
@@ -38156,6 +37177,107 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
 
 /***/ }),
 
+/***/ 52533:
+/***/ ((module) => {
+
+"use strict";
+
+
+var traverse = module.exports = function (schema, opts, cb) {
+  // Legacy support for v0.3.1 and earlier.
+  if (typeof opts == 'function') {
+    cb = opts;
+    opts = {};
+  }
+
+  cb = opts.cb || cb;
+  var pre = (typeof cb == 'function') ? cb : cb.pre || function() {};
+  var post = cb.post || function() {};
+
+  _traverse(opts, pre, post, schema, '', schema);
+};
+
+
+traverse.keywords = {
+  additionalItems: true,
+  items: true,
+  contains: true,
+  additionalProperties: true,
+  propertyNames: true,
+  not: true,
+  if: true,
+  then: true,
+  else: true
+};
+
+traverse.arrayKeywords = {
+  items: true,
+  allOf: true,
+  anyOf: true,
+  oneOf: true
+};
+
+traverse.propsKeywords = {
+  $defs: true,
+  definitions: true,
+  properties: true,
+  patternProperties: true,
+  dependencies: true
+};
+
+traverse.skipKeywords = {
+  default: true,
+  enum: true,
+  const: true,
+  required: true,
+  maximum: true,
+  minimum: true,
+  exclusiveMaximum: true,
+  exclusiveMinimum: true,
+  multipleOf: true,
+  maxLength: true,
+  minLength: true,
+  pattern: true,
+  format: true,
+  maxItems: true,
+  minItems: true,
+  uniqueItems: true,
+  maxProperties: true,
+  minProperties: true
+};
+
+
+function _traverse(opts, pre, post, schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex) {
+  if (schema && typeof schema == 'object' && !Array.isArray(schema)) {
+    pre(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
+    for (var key in schema) {
+      var sch = schema[key];
+      if (Array.isArray(sch)) {
+        if (key in traverse.arrayKeywords) {
+          for (var i=0; i<sch.length; i++)
+            _traverse(opts, pre, post, sch[i], jsonPtr + '/' + key + '/' + i, rootSchema, jsonPtr, key, schema, i);
+        }
+      } else if (key in traverse.propsKeywords) {
+        if (sch && typeof sch == 'object') {
+          for (var prop in sch)
+            _traverse(opts, pre, post, sch[prop], jsonPtr + '/' + key + '/' + escapeJsonPtr(prop), rootSchema, jsonPtr, key, schema, prop);
+        }
+      } else if (key in traverse.keywords || (opts.allKeys && !(key in traverse.skipKeywords))) {
+        _traverse(opts, pre, post, sch, jsonPtr + '/' + key, rootSchema, jsonPtr, key, schema);
+      }
+    }
+    post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
+  }
+}
+
+
+function escapeJsonPtr(str) {
+  return str.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+
+/***/ }),
+
 /***/ 78309:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -40223,6 +39345,968 @@ function populateMaps (extensions, types) {
     }
   })
 }
+
+
+/***/ }),
+
+/***/ 84917:
+/***/ ((module) => {
+
+const isWindows = typeof process === 'object' &&
+  process &&
+  process.platform === 'win32'
+module.exports = isWindows ? { sep: '\\' } : { sep: '/' }
+
+
+/***/ }),
+
+/***/ 83973:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const minimatch = module.exports = (p, pattern, options = {}) => {
+  assertValidPattern(pattern)
+
+  // shortcut: comments match nothing.
+  if (!options.nocomment && pattern.charAt(0) === '#') {
+    return false
+  }
+
+  return new Minimatch(pattern, options).match(p)
+}
+
+module.exports = minimatch
+
+const path = __nccwpck_require__(84917)
+minimatch.sep = path.sep
+
+const GLOBSTAR = Symbol('globstar **')
+minimatch.GLOBSTAR = GLOBSTAR
+const expand = __nccwpck_require__(33717)
+
+const plTypes = {
+  '!': { open: '(?:(?!(?:', close: '))[^/]*?)'},
+  '?': { open: '(?:', close: ')?' },
+  '+': { open: '(?:', close: ')+' },
+  '*': { open: '(?:', close: ')*' },
+  '@': { open: '(?:', close: ')' }
+}
+
+// any single thing other than /
+// don't need to escape / when using new RegExp()
+const qmark = '[^/]'
+
+// * => any number of characters
+const star = qmark + '*?'
+
+// ** when dots are allowed.  Anything goes, except .. and .
+// not (^ or / followed by one or two dots followed by $ or /),
+// followed by anything, any number of times.
+const twoStarDot = '(?:(?!(?:\\\/|^)(?:\\.{1,2})($|\\\/)).)*?'
+
+// not a ^ or / followed by a dot,
+// followed by anything, any number of times.
+const twoStarNoDot = '(?:(?!(?:\\\/|^)\\.).)*?'
+
+// "abc" -> { a:true, b:true, c:true }
+const charSet = s => s.split('').reduce((set, c) => {
+  set[c] = true
+  return set
+}, {})
+
+// characters that need to be escaped in RegExp.
+const reSpecials = charSet('().*{}+?[]^$\\!')
+
+// characters that indicate we have to add the pattern start
+const addPatternStartSet = charSet('[.(')
+
+// normalizes slashes.
+const slashSplit = /\/+/
+
+minimatch.filter = (pattern, options = {}) =>
+  (p, i, list) => minimatch(p, pattern, options)
+
+const ext = (a, b = {}) => {
+  const t = {}
+  Object.keys(a).forEach(k => t[k] = a[k])
+  Object.keys(b).forEach(k => t[k] = b[k])
+  return t
+}
+
+minimatch.defaults = def => {
+  if (!def || typeof def !== 'object' || !Object.keys(def).length) {
+    return minimatch
+  }
+
+  const orig = minimatch
+
+  const m = (p, pattern, options) => orig(p, pattern, ext(def, options))
+  m.Minimatch = class Minimatch extends orig.Minimatch {
+    constructor (pattern, options) {
+      super(pattern, ext(def, options))
+    }
+  }
+  m.Minimatch.defaults = options => orig.defaults(ext(def, options)).Minimatch
+  m.filter = (pattern, options) => orig.filter(pattern, ext(def, options))
+  m.defaults = options => orig.defaults(ext(def, options))
+  m.makeRe = (pattern, options) => orig.makeRe(pattern, ext(def, options))
+  m.braceExpand = (pattern, options) => orig.braceExpand(pattern, ext(def, options))
+  m.match = (list, pattern, options) => orig.match(list, pattern, ext(def, options))
+
+  return m
+}
+
+
+
+
+
+// Brace expansion:
+// a{b,c}d -> abd acd
+// a{b,}c -> abc ac
+// a{0..3}d -> a0d a1d a2d a3d
+// a{b,c{d,e}f}g -> abg acdfg acefg
+// a{b,c}d{e,f}g -> abdeg acdeg abdeg abdfg
+//
+// Invalid sets are not expanded.
+// a{2..}b -> a{2..}b
+// a{b}c -> a{b}c
+minimatch.braceExpand = (pattern, options) => braceExpand(pattern, options)
+
+const braceExpand = (pattern, options = {}) => {
+  assertValidPattern(pattern)
+
+  // Thanks to Yeting Li <https://github.com/yetingli> for
+  // improving this regexp to avoid a ReDOS vulnerability.
+  if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
+    // shortcut. no need to expand.
+    return [pattern]
+  }
+
+  return expand(pattern)
+}
+
+const MAX_PATTERN_LENGTH = 1024 * 64
+const assertValidPattern = pattern => {
+  if (typeof pattern !== 'string') {
+    throw new TypeError('invalid pattern')
+  }
+
+  if (pattern.length > MAX_PATTERN_LENGTH) {
+    throw new TypeError('pattern is too long')
+  }
+}
+
+// parse a component of the expanded set.
+// At this point, no pattern may contain "/" in it
+// so we're going to return a 2d array, where each entry is the full
+// pattern, split on '/', and then turned into a regular expression.
+// A regexp is made at the end which joins each array with an
+// escaped /, and another full one which joins each regexp with |.
+//
+// Following the lead of Bash 4.1, note that "**" only has special meaning
+// when it is the *only* thing in a path portion.  Otherwise, any series
+// of * is equivalent to a single *.  Globstar behavior is enabled by
+// default, and can be disabled by setting options.noglobstar.
+const SUBPARSE = Symbol('subparse')
+
+minimatch.makeRe = (pattern, options) =>
+  new Minimatch(pattern, options || {}).makeRe()
+
+minimatch.match = (list, pattern, options = {}) => {
+  const mm = new Minimatch(pattern, options)
+  list = list.filter(f => mm.match(f))
+  if (mm.options.nonull && !list.length) {
+    list.push(pattern)
+  }
+  return list
+}
+
+// replace stuff like \* with *
+const globUnescape = s => s.replace(/\\(.)/g, '$1')
+const charUnescape = s => s.replace(/\\([^-\]])/g, '$1')
+const regExpEscape = s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+const braExpEscape = s => s.replace(/[[\]\\]/g, '\\$&')
+
+class Minimatch {
+  constructor (pattern, options) {
+    assertValidPattern(pattern)
+
+    if (!options) options = {}
+
+    this.options = options
+    this.set = []
+    this.pattern = pattern
+    this.windowsPathsNoEscape = !!options.windowsPathsNoEscape ||
+      options.allowWindowsEscape === false
+    if (this.windowsPathsNoEscape) {
+      this.pattern = this.pattern.replace(/\\/g, '/')
+    }
+    this.regexp = null
+    this.negate = false
+    this.comment = false
+    this.empty = false
+    this.partial = !!options.partial
+
+    // make the set of regexps etc.
+    this.make()
+  }
+
+  debug () {}
+
+  make () {
+    const pattern = this.pattern
+    const options = this.options
+
+    // empty patterns and comments match nothing.
+    if (!options.nocomment && pattern.charAt(0) === '#') {
+      this.comment = true
+      return
+    }
+    if (!pattern) {
+      this.empty = true
+      return
+    }
+
+    // step 1: figure out negation, etc.
+    this.parseNegate()
+
+    // step 2: expand braces
+    let set = this.globSet = this.braceExpand()
+
+    if (options.debug) this.debug = (...args) => console.error(...args)
+
+    this.debug(this.pattern, set)
+
+    // step 3: now we have a set, so turn each one into a series of path-portion
+    // matching patterns.
+    // These will be regexps, except in the case of "**", which is
+    // set to the GLOBSTAR object for globstar behavior,
+    // and will not contain any / characters
+    set = this.globParts = set.map(s => s.split(slashSplit))
+
+    this.debug(this.pattern, set)
+
+    // glob --> regexps
+    set = set.map((s, si, set) => s.map(this.parse, this))
+
+    this.debug(this.pattern, set)
+
+    // filter out everything that didn't compile properly.
+    set = set.filter(s => s.indexOf(false) === -1)
+
+    this.debug(this.pattern, set)
+
+    this.set = set
+  }
+
+  parseNegate () {
+    if (this.options.nonegate) return
+
+    const pattern = this.pattern
+    let negate = false
+    let negateOffset = 0
+
+    for (let i = 0; i < pattern.length && pattern.charAt(i) === '!'; i++) {
+      negate = !negate
+      negateOffset++
+    }
+
+    if (negateOffset) this.pattern = pattern.slice(negateOffset)
+    this.negate = negate
+  }
+
+  // set partial to true to test if, for example,
+  // "/a/b" matches the start of "/*/b/*/d"
+  // Partial means, if you run out of file before you run
+  // out of pattern, then that's fine, as long as all
+  // the parts match.
+  matchOne (file, pattern, partial) {
+    var options = this.options
+
+    this.debug('matchOne',
+      { 'this': this, file: file, pattern: pattern })
+
+    this.debug('matchOne', file.length, pattern.length)
+
+    for (var fi = 0,
+        pi = 0,
+        fl = file.length,
+        pl = pattern.length
+        ; (fi < fl) && (pi < pl)
+        ; fi++, pi++) {
+      this.debug('matchOne loop')
+      var p = pattern[pi]
+      var f = file[fi]
+
+      this.debug(pattern, p, f)
+
+      // should be impossible.
+      // some invalid regexp stuff in the set.
+      /* istanbul ignore if */
+      if (p === false) return false
+
+      if (p === GLOBSTAR) {
+        this.debug('GLOBSTAR', [pattern, p, f])
+
+        // "**"
+        // a/**/b/**/c would match the following:
+        // a/b/x/y/z/c
+        // a/x/y/z/b/c
+        // a/b/x/b/x/c
+        // a/b/c
+        // To do this, take the rest of the pattern after
+        // the **, and see if it would match the file remainder.
+        // If so, return success.
+        // If not, the ** "swallows" a segment, and try again.
+        // This is recursively awful.
+        //
+        // a/**/b/**/c matching a/b/x/y/z/c
+        // - a matches a
+        // - doublestar
+        //   - matchOne(b/x/y/z/c, b/**/c)
+        //     - b matches b
+        //     - doublestar
+        //       - matchOne(x/y/z/c, c) -> no
+        //       - matchOne(y/z/c, c) -> no
+        //       - matchOne(z/c, c) -> no
+        //       - matchOne(c, c) yes, hit
+        var fr = fi
+        var pr = pi + 1
+        if (pr === pl) {
+          this.debug('** at the end')
+          // a ** at the end will just swallow the rest.
+          // We have found a match.
+          // however, it will not swallow /.x, unless
+          // options.dot is set.
+          // . and .. are *never* matched by **, for explosively
+          // exponential reasons.
+          for (; fi < fl; fi++) {
+            if (file[fi] === '.' || file[fi] === '..' ||
+              (!options.dot && file[fi].charAt(0) === '.')) return false
+          }
+          return true
+        }
+
+        // ok, let's see if we can swallow whatever we can.
+        while (fr < fl) {
+          var swallowee = file[fr]
+
+          this.debug('\nglobstar while', file, fr, pattern, pr, swallowee)
+
+          // XXX remove this slice.  Just pass the start index.
+          if (this.matchOne(file.slice(fr), pattern.slice(pr), partial)) {
+            this.debug('globstar found match!', fr, fl, swallowee)
+            // found a match.
+            return true
+          } else {
+            // can't swallow "." or ".." ever.
+            // can only swallow ".foo" when explicitly asked.
+            if (swallowee === '.' || swallowee === '..' ||
+              (!options.dot && swallowee.charAt(0) === '.')) {
+              this.debug('dot detected!', file, fr, pattern, pr)
+              break
+            }
+
+            // ** swallows a segment, and continue.
+            this.debug('globstar swallow a segment, and continue')
+            fr++
+          }
+        }
+
+        // no match was found.
+        // However, in partial mode, we can't say this is necessarily over.
+        // If there's more *pattern* left, then
+        /* istanbul ignore if */
+        if (partial) {
+          // ran out of file
+          this.debug('\n>>> no match, partial?', file, fr, pattern, pr)
+          if (fr === fl) return true
+        }
+        return false
+      }
+
+      // something other than **
+      // non-magic patterns just have to match exactly
+      // patterns with magic have been turned into regexps.
+      var hit
+      if (typeof p === 'string') {
+        hit = f === p
+        this.debug('string match', p, f, hit)
+      } else {
+        hit = f.match(p)
+        this.debug('pattern match', p, f, hit)
+      }
+
+      if (!hit) return false
+    }
+
+    // Note: ending in / means that we'll get a final ""
+    // at the end of the pattern.  This can only match a
+    // corresponding "" at the end of the file.
+    // If the file ends in /, then it can only match a
+    // a pattern that ends in /, unless the pattern just
+    // doesn't have any more for it. But, a/b/ should *not*
+    // match "a/b/*", even though "" matches against the
+    // [^/]*? pattern, except in partial mode, where it might
+    // simply not be reached yet.
+    // However, a/b/ should still satisfy a/*
+
+    // now either we fell off the end of the pattern, or we're done.
+    if (fi === fl && pi === pl) {
+      // ran out of pattern and filename at the same time.
+      // an exact hit!
+      return true
+    } else if (fi === fl) {
+      // ran out of file, but still had pattern left.
+      // this is ok if we're doing the match as part of
+      // a glob fs traversal.
+      return partial
+    } else /* istanbul ignore else */ if (pi === pl) {
+      // ran out of pattern, still have file left.
+      // this is only acceptable if we're on the very last
+      // empty segment of a file with a trailing slash.
+      // a/* should match a/b/
+      return (fi === fl - 1) && (file[fi] === '')
+    }
+
+    // should be unreachable.
+    /* istanbul ignore next */
+    throw new Error('wtf?')
+  }
+
+  braceExpand () {
+    return braceExpand(this.pattern, this.options)
+  }
+
+  parse (pattern, isSub) {
+    assertValidPattern(pattern)
+
+    const options = this.options
+
+    // shortcuts
+    if (pattern === '**') {
+      if (!options.noglobstar)
+        return GLOBSTAR
+      else
+        pattern = '*'
+    }
+    if (pattern === '') return ''
+
+    let re = ''
+    let hasMagic = false
+    let escaping = false
+    // ? => one single character
+    const patternListStack = []
+    const negativeLists = []
+    let stateChar
+    let inClass = false
+    let reClassStart = -1
+    let classStart = -1
+    let cs
+    let pl
+    let sp
+    // . and .. never match anything that doesn't start with .,
+    // even when options.dot is set.  However, if the pattern
+    // starts with ., then traversal patterns can match.
+    let dotTravAllowed = pattern.charAt(0) === '.'
+    let dotFileAllowed = options.dot || dotTravAllowed
+    const patternStart = () =>
+      dotTravAllowed
+        ? ''
+        : dotFileAllowed
+        ? '(?!(?:^|\\/)\\.{1,2}(?:$|\\/))'
+        : '(?!\\.)'
+    const subPatternStart = (p) =>
+      p.charAt(0) === '.'
+        ? ''
+        : options.dot
+        ? '(?!(?:^|\\/)\\.{1,2}(?:$|\\/))'
+        : '(?!\\.)'
+
+
+    const clearStateChar = () => {
+      if (stateChar) {
+        // we had some state-tracking character
+        // that wasn't consumed by this pass.
+        switch (stateChar) {
+          case '*':
+            re += star
+            hasMagic = true
+          break
+          case '?':
+            re += qmark
+            hasMagic = true
+          break
+          default:
+            re += '\\' + stateChar
+          break
+        }
+        this.debug('clearStateChar %j %j', stateChar, re)
+        stateChar = false
+      }
+    }
+
+    for (let i = 0, c; (i < pattern.length) && (c = pattern.charAt(i)); i++) {
+      this.debug('%s\t%s %s %j', pattern, i, re, c)
+
+      // skip over any that are escaped.
+      if (escaping) {
+        /* istanbul ignore next - completely not allowed, even escaped. */
+        if (c === '/') {
+          return false
+        }
+
+        if (reSpecials[c]) {
+          re += '\\'
+        }
+        re += c
+        escaping = false
+        continue
+      }
+
+      switch (c) {
+        /* istanbul ignore next */
+        case '/': {
+          // Should already be path-split by now.
+          return false
+        }
+
+        case '\\':
+          if (inClass && pattern.charAt(i + 1) === '-') {
+            re += c
+            continue
+          }
+
+          clearStateChar()
+          escaping = true
+        continue
+
+        // the various stateChar values
+        // for the "extglob" stuff.
+        case '?':
+        case '*':
+        case '+':
+        case '@':
+        case '!':
+          this.debug('%s\t%s %s %j <-- stateChar', pattern, i, re, c)
+
+          // all of those are literals inside a class, except that
+          // the glob [!a] means [^a] in regexp
+          if (inClass) {
+            this.debug('  in class')
+            if (c === '!' && i === classStart + 1) c = '^'
+            re += c
+            continue
+          }
+
+          // if we already have a stateChar, then it means
+          // that there was something like ** or +? in there.
+          // Handle the stateChar, then proceed with this one.
+          this.debug('call clearStateChar %j', stateChar)
+          clearStateChar()
+          stateChar = c
+          // if extglob is disabled, then +(asdf|foo) isn't a thing.
+          // just clear the statechar *now*, rather than even diving into
+          // the patternList stuff.
+          if (options.noext) clearStateChar()
+        continue
+
+        case '(': {
+          if (inClass) {
+            re += '('
+            continue
+          }
+
+          if (!stateChar) {
+            re += '\\('
+            continue
+          }
+
+          const plEntry = {
+            type: stateChar,
+            start: i - 1,
+            reStart: re.length,
+            open: plTypes[stateChar].open,
+            close: plTypes[stateChar].close,
+          }
+          this.debug(this.pattern, '\t', plEntry)
+          patternListStack.push(plEntry)
+          // negation is (?:(?!(?:js)(?:<rest>))[^/]*)
+          re += plEntry.open
+          // next entry starts with a dot maybe?
+          if (plEntry.start === 0 && plEntry.type !== '!') {
+            dotTravAllowed = true
+            re += subPatternStart(pattern.slice(i + 1))
+          }
+          this.debug('plType %j %j', stateChar, re)
+          stateChar = false
+          continue
+        }
+
+        case ')': {
+          const plEntry = patternListStack[patternListStack.length - 1]
+          if (inClass || !plEntry) {
+            re += '\\)'
+            continue
+          }
+          patternListStack.pop()
+
+          // closing an extglob
+          clearStateChar()
+          hasMagic = true
+          pl = plEntry
+          // negation is (?:(?!js)[^/]*)
+          // The others are (?:<pattern>)<type>
+          re += pl.close
+          if (pl.type === '!') {
+            negativeLists.push(Object.assign(pl, { reEnd: re.length }))
+          }
+          continue
+        }
+
+        case '|': {
+          const plEntry = patternListStack[patternListStack.length - 1]
+          if (inClass || !plEntry) {
+            re += '\\|'
+            continue
+          }
+
+          clearStateChar()
+          re += '|'
+          // next subpattern can start with a dot?
+          if (plEntry.start === 0 && plEntry.type !== '!') {
+            dotTravAllowed = true
+            re += subPatternStart(pattern.slice(i + 1))
+          }
+          continue
+        }
+
+        // these are mostly the same in regexp and glob
+        case '[':
+          // swallow any state-tracking char before the [
+          clearStateChar()
+
+          if (inClass) {
+            re += '\\' + c
+            continue
+          }
+
+          inClass = true
+          classStart = i
+          reClassStart = re.length
+          re += c
+        continue
+
+        case ']':
+          //  a right bracket shall lose its special
+          //  meaning and represent itself in
+          //  a bracket expression if it occurs
+          //  first in the list.  -- POSIX.2 2.8.3.2
+          if (i === classStart + 1 || !inClass) {
+            re += '\\' + c
+            continue
+          }
+
+          // split where the last [ was, make sure we don't have
+          // an invalid re. if so, re-walk the contents of the
+          // would-be class to re-translate any characters that
+          // were passed through as-is
+          // TODO: It would probably be faster to determine this
+          // without a try/catch and a new RegExp, but it's tricky
+          // to do safely.  For now, this is safe and works.
+          cs = pattern.substring(classStart + 1, i)
+          try {
+            RegExp('[' + braExpEscape(charUnescape(cs)) + ']')
+            // looks good, finish up the class.
+            re += c
+          } catch (er) {
+            // out of order ranges in JS are errors, but in glob syntax,
+            // they're just a range that matches nothing.
+            re = re.substring(0, reClassStart) + '(?:$.)' // match nothing ever
+          }
+          hasMagic = true
+          inClass = false
+        continue
+
+        default:
+          // swallow any state char that wasn't consumed
+          clearStateChar()
+
+          if (reSpecials[c] && !(c === '^' && inClass)) {
+            re += '\\'
+          }
+
+          re += c
+          break
+
+      } // switch
+    } // for
+
+    // handle the case where we left a class open.
+    // "[abc" is valid, equivalent to "\[abc"
+    if (inClass) {
+      // split where the last [ was, and escape it
+      // this is a huge pita.  We now have to re-walk
+      // the contents of the would-be class to re-translate
+      // any characters that were passed through as-is
+      cs = pattern.slice(classStart + 1)
+      sp = this.parse(cs, SUBPARSE)
+      re = re.substring(0, reClassStart) + '\\[' + sp[0]
+      hasMagic = hasMagic || sp[1]
+    }
+
+    // handle the case where we had a +( thing at the *end*
+    // of the pattern.
+    // each pattern list stack adds 3 chars, and we need to go through
+    // and escape any | chars that were passed through as-is for the regexp.
+    // Go through and escape them, taking care not to double-escape any
+    // | chars that were already escaped.
+    for (pl = patternListStack.pop(); pl; pl = patternListStack.pop()) {
+      let tail
+      tail = re.slice(pl.reStart + pl.open.length)
+      this.debug('setting tail', re, pl)
+      // maybe some even number of \, then maybe 1 \, followed by a |
+      tail = tail.replace(/((?:\\{2}){0,64})(\\?)\|/g, (_, $1, $2) => {
+        /* istanbul ignore else - should already be done */
+        if (!$2) {
+          // the | isn't already escaped, so escape it.
+          $2 = '\\'
+        }
+
+        // need to escape all those slashes *again*, without escaping the
+        // one that we need for escaping the | character.  As it works out,
+        // escaping an even number of slashes can be done by simply repeating
+        // it exactly after itself.  That's why this trick works.
+        //
+        // I am sorry that you have to see this.
+        return $1 + $1 + $2 + '|'
+      })
+
+      this.debug('tail=%j\n   %s', tail, tail, pl, re)
+      const t = pl.type === '*' ? star
+        : pl.type === '?' ? qmark
+        : '\\' + pl.type
+
+      hasMagic = true
+      re = re.slice(0, pl.reStart) + t + '\\(' + tail
+    }
+
+    // handle trailing things that only matter at the very end.
+    clearStateChar()
+    if (escaping) {
+      // trailing \\
+      re += '\\\\'
+    }
+
+    // only need to apply the nodot start if the re starts with
+    // something that could conceivably capture a dot
+    const addPatternStart = addPatternStartSet[re.charAt(0)]
+
+    // Hack to work around lack of negative lookbehind in JS
+    // A pattern like: *.!(x).!(y|z) needs to ensure that a name
+    // like 'a.xyz.yz' doesn't match.  So, the first negative
+    // lookahead, has to look ALL the way ahead, to the end of
+    // the pattern.
+    for (let n = negativeLists.length - 1; n > -1; n--) {
+      const nl = negativeLists[n]
+
+      const nlBefore = re.slice(0, nl.reStart)
+      const nlFirst = re.slice(nl.reStart, nl.reEnd - 8)
+      let nlAfter = re.slice(nl.reEnd)
+      const nlLast = re.slice(nl.reEnd - 8, nl.reEnd) + nlAfter
+
+      // Handle nested stuff like *(*.js|!(*.json)), where open parens
+      // mean that we should *not* include the ) in the bit that is considered
+      // "after" the negated section.
+      const closeParensBefore = nlBefore.split(')').length
+      const openParensBefore = nlBefore.split('(').length - closeParensBefore
+      let cleanAfter = nlAfter
+      for (let i = 0; i < openParensBefore; i++) {
+        cleanAfter = cleanAfter.replace(/\)[+*?]?/, '')
+      }
+      nlAfter = cleanAfter
+
+      const dollar = nlAfter === '' && isSub !== SUBPARSE ? '(?:$|\\/)' : ''
+
+      re = nlBefore + nlFirst + nlAfter + dollar + nlLast
+    }
+
+    // if the re is not "" at this point, then we need to make sure
+    // it doesn't match against an empty path part.
+    // Otherwise a/* will match a/, which it should not.
+    if (re !== '' && hasMagic) {
+      re = '(?=.)' + re
+    }
+
+    if (addPatternStart) {
+      re = patternStart() + re
+    }
+
+    // parsing just a piece of a larger pattern.
+    if (isSub === SUBPARSE) {
+      return [re, hasMagic]
+    }
+
+    // if it's nocase, and the lcase/uppercase don't match, it's magic
+    if (options.nocase && !hasMagic) {
+      hasMagic = pattern.toUpperCase() !== pattern.toLowerCase()
+    }
+
+    // skip the regexp for non-magical patterns
+    // unescape anything in it, though, so that it'll be
+    // an exact match against a file etc.
+    if (!hasMagic) {
+      return globUnescape(pattern)
+    }
+
+    const flags = options.nocase ? 'i' : ''
+    try {
+      return Object.assign(new RegExp('^' + re + '$', flags), {
+        _glob: pattern,
+        _src: re,
+      })
+    } catch (er) /* istanbul ignore next - should be impossible */ {
+      // If it was an invalid regular expression, then it can't match
+      // anything.  This trick looks for a character after the end of
+      // the string, which is of course impossible, except in multi-line
+      // mode, but it's not a /m regex.
+      return new RegExp('$.')
+    }
+  }
+
+  makeRe () {
+    if (this.regexp || this.regexp === false) return this.regexp
+
+    // at this point, this.set is a 2d array of partial
+    // pattern strings, or "**".
+    //
+    // It's better to use .match().  This function shouldn't
+    // be used, really, but it's pretty convenient sometimes,
+    // when you just want to work with a regex.
+    const set = this.set
+
+    if (!set.length) {
+      this.regexp = false
+      return this.regexp
+    }
+    const options = this.options
+
+    const twoStar = options.noglobstar ? star
+      : options.dot ? twoStarDot
+      : twoStarNoDot
+    const flags = options.nocase ? 'i' : ''
+
+    // coalesce globstars and regexpify non-globstar patterns
+    // if it's the only item, then we just do one twoStar
+    // if it's the first, and there are more, prepend (\/|twoStar\/)? to next
+    // if it's the last, append (\/twoStar|) to previous
+    // if it's in the middle, append (\/|\/twoStar\/) to previous
+    // then filter out GLOBSTAR symbols
+    let re = set.map(pattern => {
+      pattern = pattern.map(p =>
+        typeof p === 'string' ? regExpEscape(p)
+        : p === GLOBSTAR ? GLOBSTAR
+        : p._src
+      ).reduce((set, p) => {
+        if (!(set[set.length - 1] === GLOBSTAR && p === GLOBSTAR)) {
+          set.push(p)
+        }
+        return set
+      }, [])
+      pattern.forEach((p, i) => {
+        if (p !== GLOBSTAR || pattern[i-1] === GLOBSTAR) {
+          return
+        }
+        if (i === 0) {
+          if (pattern.length > 1) {
+            pattern[i+1] = '(?:\\\/|' + twoStar + '\\\/)?' + pattern[i+1]
+          } else {
+            pattern[i] = twoStar
+          }
+        } else if (i === pattern.length - 1) {
+          pattern[i-1] += '(?:\\\/|' + twoStar + ')?'
+        } else {
+          pattern[i-1] += '(?:\\\/|\\\/' + twoStar + '\\\/)' + pattern[i+1]
+          pattern[i+1] = GLOBSTAR
+        }
+      })
+      return pattern.filter(p => p !== GLOBSTAR).join('/')
+    }).join('|')
+
+    // must match entire pattern
+    // ending in a * or ** will make it less strict.
+    re = '^(?:' + re + ')$'
+
+    // can match anything, as long as it's not this.
+    if (this.negate) re = '^(?!' + re + ').*$'
+
+    try {
+      this.regexp = new RegExp(re, flags)
+    } catch (ex) /* istanbul ignore next - should be impossible */ {
+      this.regexp = false
+    }
+    return this.regexp
+  }
+
+  match (f, partial = this.partial) {
+    this.debug('match', f, this.pattern)
+    // short-circuit in the case of busted things.
+    // comments, etc.
+    if (this.comment) return false
+    if (this.empty) return f === ''
+
+    if (f === '/' && partial) return true
+
+    const options = this.options
+
+    // windows: need to use /, not \
+    if (path.sep !== '/') {
+      f = f.split(path.sep).join('/')
+    }
+
+    // treat the test path as a set of pathparts.
+    f = f.split(slashSplit)
+    this.debug(this.pattern, 'split', f)
+
+    // just ONE of the pattern sets in this.set needs to match
+    // in order for it to be valid.  If negating, then just one
+    // match means that we have failed.
+    // Either way, return on the first hit.
+
+    const set = this.set
+    this.debug(this.pattern, 'set', set)
+
+    // Find the basename of the path by looking for the last non-empty segment
+    let filename
+    for (let i = f.length - 1; i >= 0; i--) {
+      filename = f[i]
+      if (filename) break
+    }
+
+    for (let i = 0; i < set.length; i++) {
+      const pattern = set[i]
+      let file = f
+      if (options.matchBase && pattern.length === 1) {
+        file = [filename]
+      }
+      const hit = this.matchOne(file, pattern, partial)
+      if (hit) {
+        if (options.flipNegate) return true
+        return !this.negate
+      }
+    }
+
+    // didn't get any hits.  this is success if it's a negative
+    // pattern, failure otherwise.
+    if (options.flipNegate) return false
+    return this.negate
+  }
+
+  static defaults (def) {
+    return minimatch.defaults(def).Minimatch
+  }
+}
+
+minimatch.Minimatch = Minimatch
 
 
 /***/ }),
@@ -75986,6 +76070,7 @@ async function run() {
     try {
         const inputData = parseInputData();
         const ghEvent = parseEventData();
+        // eslint-disable-next-line no-console
         console.debug('Push arguments', {
             redocly: {
                 redoclyOrgSlug: inputData.redoclyOrgSlug,
@@ -76001,7 +76086,6 @@ async function run() {
             }
         });
         const config = await getRedoclyConfig(inputData.configPath);
-        console.log('Config', config);
         if (!ghEvent.branch ||
             !ghEvent.defaultBranch ||
             !ghEvent.commit.commitMessage ||
@@ -76029,7 +76113,6 @@ async function run() {
             'created-at': ghEvent.commit.commitCreatedAt
         }, config);
         if (pushData) {
-            console.log('Push data:', pushData);
             const pushStatusData = await (0, push_status_1.handlePushStatus)({
                 organization: inputData.redoclyOrgSlug,
                 project: inputData.redoclyProjectSlug,
@@ -76038,7 +76121,6 @@ async function run() {
                 'max-execution-time': inputData.maxExecutionTime,
                 wait: true
             }, config);
-            console.log('pushStatusData', pushStatusData);
             if (!pushStatusData) {
                 throw new Error('Missing push status data');
             }
@@ -76052,7 +76134,6 @@ async function run() {
             });
             core.setOutput('pushId', pushData.pushId);
         }
-        console.log('Action finished!');
     }
     catch (error) {
         if (error instanceof Error)
@@ -78289,7 +78370,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.10.3","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"./openapi-core.tgz","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
+module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.10.5","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"./openapi-core.tgz","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
 
 /***/ }),
 
@@ -78297,7 +78378,7 @@ module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.10.3","descript
 /***/ ((module) => {
 
 "use strict";
-module.exports = {"i8":"1.10.3"};
+module.exports = {"i8":"1.10.5"};
 
 /***/ }),
 

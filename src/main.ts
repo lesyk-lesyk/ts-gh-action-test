@@ -11,6 +11,7 @@ export async function run(): Promise<void> {
     const inputData = parseInputData();
     const ghEvent = parseEventData();
 
+    // eslint-disable-next-line no-console
     console.debug('Push arguments', {
       redocly: {
         redoclyOrgSlug: inputData.redoclyOrgSlug,
@@ -27,8 +28,6 @@ export async function run(): Promise<void> {
     });
 
     const config = await getRedoclyConfig(inputData.configPath);
-
-    console.log('Config', config);
 
     if (
       !ghEvent.branch ||
@@ -64,7 +63,6 @@ export async function run(): Promise<void> {
     );
 
     if (pushData) {
-      console.log('Push data:', pushData);
       const pushStatusData = await handlePushStatus(
         {
           organization: inputData.redoclyOrgSlug,
@@ -76,8 +74,6 @@ export async function run(): Promise<void> {
         },
         config
       );
-
-      console.log('pushStatusData', pushStatusData);
 
       if (!pushStatusData) {
         throw new Error('Missing push status data');
@@ -94,8 +90,6 @@ export async function run(): Promise<void> {
 
       core.setOutput('pushId', pushData.pushId);
     }
-
-    console.log('Action finished!');
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }

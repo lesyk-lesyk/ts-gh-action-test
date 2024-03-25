@@ -1,8 +1,8 @@
-import * as core from '@actions/core'
-import * as github from '@actions/github'
-import type { RestEndpointMethodTypes } from '@octokit/rest'
-import { DeploymentStatus } from '@redocly/cli/lib/cms/api/types'
-import { PushStatusSummary } from '@redocly/cli/lib/cms/commands/push-status'
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import type { RestEndpointMethodTypes } from '@octokit/rest';
+import { DeploymentStatus } from '@redocly/cli/lib/cms/api/types';
+import { PushStatusSummary } from '@redocly/cli/lib/cms/commands/push-status';
 
 export async function setCommitStatuses({
   data,
@@ -12,25 +12,25 @@ export async function setCommitStatuses({
   organizationSlug,
   projectSlug
 }: {
-  data: PushStatusSummary
-  owner: string
-  repo: string
-  commitId: string
-  organizationSlug: string
-  projectSlug: string
+  data: PushStatusSummary;
+  owner: string;
+  repo: string;
+  commitId: string;
+  organizationSlug: string;
+  projectSlug: string;
 }): Promise<void> {
-  const addPrefix = 'true' // TODO: get from input
-  const customPrefix = undefined // TODO: get from input
+  const addPrefix = 'true'; // TODO: get from input
+  const customPrefix = undefined; // TODO: get from input
 
-  const shouldAddPrefix = addPrefix === 'true'
-  const defaultPrefix = `${organizationSlug}/${projectSlug}`
-  const prefixDelimiter = ' - '
+  const shouldAddPrefix = addPrefix === 'true';
+  const defaultPrefix = `${organizationSlug}/${projectSlug}`;
+  const prefixDelimiter = ' - ';
   const statusPrefix = shouldAddPrefix
     ? `${customPrefix || defaultPrefix}${prefixDelimiter}`
-    : ''
+    : '';
 
-  const githubToken = core.getInput('githubToken')
-  const octokit = github.getOctokit(githubToken)
+  const githubToken = core.getInput('githubToken');
+  const octokit = github.getOctokit(githubToken);
 
   if (data?.preview) {
     await octokit.rest.repos.createCommitStatus({
@@ -40,7 +40,7 @@ export async function setCommitStatuses({
       state: mapDeploymentStateToGithubCommitState(data.preview.status),
       target_url: data.preview.url,
       context: `${statusPrefix}Preview`
-    })
+    });
   }
 
   if (data?.preview?.scorecard) {
@@ -54,9 +54,9 @@ export async function setCommitStatuses({
           target_url: scorecard.url,
           context: `${statusPrefix}${scorecard.name}`,
           description: scorecard.description
-        })
+        });
       })
-    )
+    );
   }
 
   if (data?.production) {
@@ -67,7 +67,7 @@ export async function setCommitStatuses({
       state: mapDeploymentStateToGithubCommitState(data.production.status),
       target_url: data.production.url,
       context: `${statusPrefix}Production`
-    })
+    });
   }
 
   if (data?.production?.scorecard) {
@@ -81,9 +81,9 @@ export async function setCommitStatuses({
           target_url: scorecard.url,
           context: `${statusPrefix}${scorecard.name}`,
           description: scorecard.description
-        })
+        });
       })
-    )
+    );
   }
 }
 
@@ -93,12 +93,12 @@ function mapDeploymentStateToGithubCommitState(
   switch (state) {
     case 'pending':
     case 'running':
-      return 'pending'
+      return 'pending';
     case 'success':
-      return 'success'
+      return 'success';
     case 'failed':
-      return 'error'
+      return 'error';
     default:
-      throw new TypeError(`Unknown deployment state: ${state}`)
+      throw new TypeError(`Unknown deployment state: ${state}`);
   }
 }
