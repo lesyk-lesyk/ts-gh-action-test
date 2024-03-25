@@ -7,10 +7,7 @@ app.get('*', (req, res) => {
   res.json({ test: 'test' });
 });
 app.post('*', (req, res) => {
-  res.json({ test: 'test' });
-});
-app.put('*', (req, res) => {
-  res.json({ test: 'test' });
+  res.json({ id: 'test-id-01', mountPath: 'test-mount-path' });
 });
 
 app.listen(port, () => {
