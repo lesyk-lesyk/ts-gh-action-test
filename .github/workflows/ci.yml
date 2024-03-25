@@ -53,13 +53,21 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
 
+      - name: Install modules
+        id: install-modules
+        run: npm install
+
+      - name: Run fake server
+        id: fake-server
+        run: npm run fake-server
+
       - name: Test Local Action
         id: test-action
         uses: ./
         with:
           organization: 'test'
           project: 'test'
-          domain: 'test'
+          domain: 'localhost:3050'
           files: 'test1 test2'
           mountPath: 'test-folder'
 
