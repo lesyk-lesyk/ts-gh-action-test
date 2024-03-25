@@ -17,7 +17,7 @@ const stubResponseStatus = {
   },
   remote: { commits: [] },
   isOutdated: false,
-  isMainBranch: false,
+  isMainBranch: true,
   hasChanges: true,
   status: {
     preview: {
