@@ -8,12 +8,13 @@ info:
     name: 'Test'
     url: 'test'
 
-security: []
 paths:
   /:
     get:
       operationId: test
       summary: Test
+      security:
+        - basicAuth: []
       responses:
         '200':
           description: ''
@@ -27,3 +28,9 @@ paths:
             application/json:
               schema:
                 type: object
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic

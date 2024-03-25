@@ -71,7 +71,7 @@ jobs:
         with:
           organization: 'ci-test-org'
           project: 'ci-test-org'
-          domain: 'http://localhost:3050'
+          domain: 'http://localhost:3000'
           files: 'tests/test-folder-1 tests/test-root-file.yaml'
           mountPath: 'test-folder'
 
