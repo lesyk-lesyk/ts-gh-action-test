@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+env:
+  GH_TOKEN: ${{ github.token }}
+  REDOCLY_AUTHORIZATION: ${{ secrets.REDOCLY_AUTHORIZATION }}
+
 jobs:
   test-typescript:
     name: TypeScript Tests
