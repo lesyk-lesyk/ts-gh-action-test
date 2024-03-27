@@ -70,6 +70,7 @@ export async function run(): Promise<void> {
           pushId: pushData.pushId,
           domain: inputData.redoclyDomain,
           'max-execution-time': inputData.maxExecutionTime,
+          'ignore-deployment-failures': true,
           wait: true
         },
         config
