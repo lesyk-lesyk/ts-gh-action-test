@@ -13881,7 +13881,7 @@ const isNeedToBeCached = () => {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.LayoutVariant = exports.REDOCLY_TEAMS_RBAC = exports.ApigeeDevOnboardingIntegrationAuthType = exports.AuthProviderType = exports.DEFAULT_TEAM_CLAIM_NAME = void 0;
+exports.LayoutVariant = exports.REDOCLY_ROUTE_RBAC = exports.REDOCLY_TEAMS_RBAC = exports.ApigeeDevOnboardingIntegrationAuthType = exports.AuthProviderType = exports.DEFAULT_TEAM_CLAIM_NAME = void 0;
 exports.DEFAULT_TEAM_CLAIM_NAME = 'https://redocly.com/sso/teams';
 var AuthProviderType;
 (function (AuthProviderType) {
@@ -13895,6 +13895,7 @@ var ApigeeDevOnboardingIntegrationAuthType;
     ApigeeDevOnboardingIntegrationAuthType["OAUTH2"] = "OAUTH2";
 })(ApigeeDevOnboardingIntegrationAuthType || (exports.ApigeeDevOnboardingIntegrationAuthType = ApigeeDevOnboardingIntegrationAuthType = {}));
 exports.REDOCLY_TEAMS_RBAC = 'redocly::teams-rbac';
+exports.REDOCLY_ROUTE_RBAC = 'redocly::route-rbac';
 var LayoutVariant;
 (function (LayoutVariant) {
     LayoutVariant["STACKED"] = "stacked";
@@ -14547,6 +14548,7 @@ exports.productThemeOverrideSchema = {
         search: exports.themeConfigSchema.properties.search,
         codeSnippet: exports.themeConfigSchema.properties.codeSnippet,
         breadcrumbs: exports.themeConfigSchema.properties.breadcrumbs,
+        feedback: exports.themeConfigSchema.properties.feedback,
         analytics: {
             type: 'object',
             properties: {
@@ -14588,7 +14590,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.REDOCLY_TEAMS_RBAC = exports.LayoutVariant = exports.AuthProviderType = exports.ApigeeDevOnboardingIntegrationAuthType = exports.productConfigOverrideSchema = exports.productThemeOverrideSchema = exports.rootRedoclyConfigSchema = exports.rbacConfigSchema = void 0;
+exports.REDOCLY_ROUTE_RBAC = exports.REDOCLY_TEAMS_RBAC = exports.LayoutVariant = exports.AuthProviderType = exports.ApigeeDevOnboardingIntegrationAuthType = exports.productConfigOverrideSchema = exports.productThemeOverrideSchema = exports.rootRedoclyConfigSchema = exports.rbacConfigSchema = void 0;
 var root_config_schema_1 = __nccwpck_require__(63375);
 Object.defineProperty(exports, "rbacConfigSchema", ({ enumerable: true, get: function () { return root_config_schema_1.rbacConfigSchema; } }));
 Object.defineProperty(exports, "rootRedoclyConfigSchema", ({ enumerable: true, get: function () { return root_config_schema_1.rootRedoclyConfigSchema; } }));
@@ -14602,6 +14604,7 @@ Object.defineProperty(exports, "ApigeeDevOnboardingIntegrationAuthType", ({ enum
 Object.defineProperty(exports, "AuthProviderType", ({ enumerable: true, get: function () { return constants_1.AuthProviderType; } }));
 Object.defineProperty(exports, "LayoutVariant", ({ enumerable: true, get: function () { return constants_1.LayoutVariant; } }));
 Object.defineProperty(exports, "REDOCLY_TEAMS_RBAC", ({ enumerable: true, get: function () { return constants_1.REDOCLY_TEAMS_RBAC; } }));
+Object.defineProperty(exports, "REDOCLY_ROUTE_RBAC", ({ enumerable: true, get: function () { return constants_1.REDOCLY_ROUTE_RBAC; } }));
 //# sourceMappingURL=index.js.map
 
 /***/ }),
@@ -17384,16 +17387,38 @@ const utils_1 = __nccwpck_require__(75450);
 const RemoveUnusedComponents = () => {
     const components = new Map();
     function registerComponent(location, componentType, name) {
-        var _a;
+        var _a, _b;
         components.set(location.absolutePointer, {
-            used: ((_a = components.get(location.absolutePointer)) === null || _a === void 0 ? void 0 : _a.used) || false,
+            usedIn: (_b = (_a = components.get(location.absolutePointer)) === null || _a === void 0 ? void 0 : _a.usedIn) !== null && _b !== void 0 ? _b : [],
             componentType,
             name,
         });
     }
+    function removeUnusedComponents(root, removedPaths) {
+        const removedLengthStart = removedPaths.length;
+        for (const [path, { usedIn, name, componentType }] of components) {
+            const used = usedIn.some((location) => !removedPaths.some((removed) => 
+            // Check if the current location's absolute pointer starts with the 'removed' path
+            // and either its length matches exactly with 'removed' or the character after the 'removed' path is a '/'
+            location.absolutePointer.startsWith(removed) &&
+                (location.absolutePointer.length === removed.length ||
+                    location.absolutePointer[removed.length] === '/')));
+            if (!used && componentType) {
+                removedPaths.push(path);
+                delete root[componentType][name];
+                components.delete(path);
+                if ((0, utils_1.isEmptyObject)(root[componentType])) {
+                    delete root[componentType];
+                }
+            }
+        }
+        return removedPaths.length > removedLengthStart
+            ? removeUnusedComponents(root, removedPaths)
+            : removedPaths.length;
+    }
     return {
         ref: {
-            leave(ref, { type, resolve, key }) {
+            leave(ref, { location, type, resolve, key }) {
                 if (['Schema', 'Parameter', 'Response', 'SecurityScheme'].includes(type.name)) {
                     const resolvedRef = resolve(ref);
                     if (!resolvedRef.location)
@@ -17401,31 +17426,23 @@ const RemoveUnusedComponents = () => {
                     const [fileLocation, localPointer] = resolvedRef.location.absolutePointer.split('#', 2);
                     const componentLevelLocalPointer = localPointer.split('/').slice(0, 3).join('/');
                     const pointer = `${fileLocation}#${componentLevelLocalPointer}`;
-                    components.set(pointer, {
-                        used: true,
-                        name: key.toString(),
-                    });
+                    const registered = components.get(pointer);
+                    if (registered) {
+                        registered.usedIn.push(location);
+                    }
+                    else {
+                        components.set(pointer, {
+                            usedIn: [location],
+                            name: key.toString(),
+                        });
+                    }
                 }
             },
         },
         Root: {
             leave(root, ctx) {
                 const data = ctx.getVisitorData();
-                data.removedCount = 0;
-                const rootComponents = new Set();
-                components.forEach((usageInfo) => {
-                    const { used, name, componentType } = usageInfo;
-                    if (!used && componentType) {
-                        rootComponents.add(componentType);
-                        delete root[componentType][name];
-                        data.removedCount++;
-                    }
-                });
-                for (const component of rootComponents) {
-                    if ((0, utils_1.isEmptyObject)(root[component])) {
-                        delete root[component];
-                    }
-                }
+                data.removedCount = removeUnusedComponents(root, []);
             },
         },
         NamedSchemas: {
@@ -17499,16 +17516,36 @@ const utils_1 = __nccwpck_require__(75450);
 const RemoveUnusedComponents = () => {
     const components = new Map();
     function registerComponent(location, componentType, name) {
-        var _a;
+        var _a, _b;
         components.set(location.absolutePointer, {
-            used: ((_a = components.get(location.absolutePointer)) === null || _a === void 0 ? void 0 : _a.used) || false,
+            usedIn: (_b = (_a = components.get(location.absolutePointer)) === null || _a === void 0 ? void 0 : _a.usedIn) !== null && _b !== void 0 ? _b : [],
             componentType,
             name,
         });
     }
+    function removeUnusedComponents(root, removedPaths) {
+        const removedLengthStart = removedPaths.length;
+        for (const [path, { usedIn, name, componentType }] of components) {
+            const used = usedIn.some((location) => !removedPaths.some((removed) => location.absolutePointer.startsWith(removed) &&
+                (location.absolutePointer.length === removed.length ||
+                    location.absolutePointer[removed.length] === '/')));
+            if (!used && componentType && root.components) {
+                removedPaths.push(path);
+                const componentChild = root.components[componentType];
+                delete componentChild[name];
+                components.delete(path);
+                if ((0, utils_1.isEmptyObject)(componentChild)) {
+                    delete root.components[componentType];
+                }
+            }
+        }
+        return removedPaths.length > removedLengthStart
+            ? removeUnusedComponents(root, removedPaths)
+            : removedPaths.length;
+    }
     return {
         ref: {
-            leave(ref, { type, resolve, key }) {
+            leave(ref, { location, type, resolve, key }) {
                 if (['Schema', 'Header', 'Parameter', 'Response', 'Example', 'RequestBody'].includes(type.name)) {
                     const resolvedRef = resolve(ref);
                     if (!resolvedRef.location)
@@ -17516,28 +17553,23 @@ const RemoveUnusedComponents = () => {
                     const [fileLocation, localPointer] = resolvedRef.location.absolutePointer.split('#', 2);
                     const componentLevelLocalPointer = localPointer.split('/').slice(0, 4).join('/');
                     const pointer = `${fileLocation}#${componentLevelLocalPointer}`;
-                    components.set(pointer, {
-                        used: true,
-                        name: key.toString(),
-                    });
+                    const registered = components.get(pointer);
+                    if (registered) {
+                        registered.usedIn.push(location);
+                    }
+                    else {
+                        components.set(pointer, {
+                            usedIn: [location],
+                            name: key.toString(),
+                        });
+                    }
                 }
             },
         },
         Root: {
             leave(root, ctx) {
                 const data = ctx.getVisitorData();
-                data.removedCount = 0;
-                components.forEach((usageInfo) => {
-                    const { used, componentType, name } = usageInfo;
-                    if (!used && componentType && root.components) {
-                        const componentChild = root.components[componentType];
-                        delete componentChild[name];
-                        data.removedCount++;
-                        if ((0, utils_1.isEmptyObject)(componentChild)) {
-                            delete root.components[componentType];
-                        }
-                    }
-                });
+                data.removedCount = removeUnusedComponents(root, []);
                 if ((0, utils_1.isEmptyObject)(root.components)) {
                     delete root.components;
                 }
@@ -22034,6 +22066,9 @@ const ValidContentExamples = (opts) => {
                             return;
                         location = isMultiple ? resolved.location.child('value') : resolved.location;
                         example = resolved.node;
+                    }
+                    if (isMultiple && typeof example.value === 'undefined') {
+                        return;
                     }
                     (0, utils_1.validateExample)(isMultiple ? example.value : example, mediaType.schema, location, ctx, allowAdditionalProperties);
                 }
@@ -78509,7 +78544,7 @@ module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.11.0","descript
 /***/ ((module) => {
 
 "use strict";
-module.exports = {"i8":"1.10.6"};
+module.exports = {"i8":"1.11.0"};
 
 /***/ }),
 
