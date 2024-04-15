@@ -2,10 +2,10 @@ name: 'The name of your action here'
 description: 'Provide a description here'
 author: 'Your name or organization here'
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
+# This will appear on the GitHub Marketplace.
 branding:
-  icon: 'heart'
-  color: 'red'
+  icon: 'upload-cloud'
+  color: 'blue'
 
 # Define your inputs here.
 inputs:
@@ -34,6 +34,14 @@ inputs:
     description: 'Token to authenticate with'
     required: true
     default: ${{ github.token }}
+  disableCommitStatusPrefix:
+    description:
+      'Disable commit status prefix. By default we use orgSlug/projectSlug
+      prefix'
+    required: false
+  customCommitStatusPrefix:
+    description: 'Custom commit status prefix. Default is orgSlug/projectSlug'
+    required: false
 
 # Define your outputs here.
 outputs:

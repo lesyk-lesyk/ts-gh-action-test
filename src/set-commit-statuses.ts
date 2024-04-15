@@ -10,7 +10,9 @@ export async function setCommitStatuses({
   repo,
   commitId,
   organizationSlug,
-  projectSlug
+  projectSlug,
+  disableCommitStatusPrefix,
+  customCommitStatusPrefix
 }: {
   data: PushStatusSummary;
   owner: string;
@@ -18,16 +20,14 @@ export async function setCommitStatuses({
   commitId: string;
   organizationSlug: string;
   projectSlug: string;
+  disableCommitStatusPrefix: boolean;
+  customCommitStatusPrefix?: string;
 }): Promise<void> {
-  const addPrefix = 'true'; // TODO: get from input
-  const customPrefix = undefined; // TODO: get from input
-
-  const shouldAddPrefix = addPrefix === 'true';
   const defaultPrefix = `${organizationSlug}/${projectSlug}`;
   const prefixDelimiter = ' - ';
-  const statusPrefix = shouldAddPrefix
-    ? `${customPrefix || defaultPrefix}${prefixDelimiter}`
-    : '';
+  const statusPrefix = disableCommitStatusPrefix
+    ? ''
+    : `${customCommitStatusPrefix || defaultPrefix}${prefixDelimiter}`;
 
   const githubToken = core.getInput('githubToken');
   const octokit = github.getOctokit(githubToken);
@@ -44,7 +44,8 @@ export async function setCommitStatuses({
   }
 
   if (data?.preview?.scorecard) {
-    Promise.all(
+    // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
+    await Promise.all(
       data.preview.scorecard.map(async scorecard => {
         await octokit.rest.repos.createCommitStatus({
           owner,
@@ -71,7 +72,8 @@ export async function setCommitStatuses({
   }
 
   if (data?.production?.scorecard) {
-    Promise.all(
+    // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
+    await Promise.all(
       data.production.scorecard.map(async scorecard => {
         await octokit.rest.repos.createCommitStatus({
           owner,
