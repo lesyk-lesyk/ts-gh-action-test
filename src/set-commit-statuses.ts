@@ -71,6 +71,8 @@ export async function setCommitStatuses({
     });
   }
 
+  // Q1: Do we need scorecard for preview and production?
+  // Q2: Do we need prefix for scorecard?
   if (data?.production?.scorecard) {
     // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
     await Promise.all(
