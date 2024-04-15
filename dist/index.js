@@ -12307,70 +12307,64 @@ function handlePushStatus(argv, config) {
         const maxExecutionTime = argv['max-execution-time'] || 600;
         const startTime = argv['start-time'] || Date.now();
         const retryTimeoutMs = maxExecutionTime * 1000;
-        const ignoreDeploymentFailures = Boolean(argv['ignore-deployment-failures']);
+        const continueOnDeploymentFailures = argv['continue-on-deployment-failures'] || false;
         try {
             const apiKey = (0, api_1.getApiKeys)(domain);
             const client = new api_1.ReuniteApiClient(domain, apiKey);
-            const previewPushData = yield getPushData({
-                orgId,
-                projectId,
-                pushId,
-                wait,
-                client,
-                buildType: 'preview',
-                startTime,
-                retryTimeoutMs,
-                onRetry: (lastResult) => {
-                    var _a;
+            const previewPushData = yield (0, utils_2.retryUntilConditionMet)({
+                operation: () => client.remotes.getPush({
+                    organizationId: orgId,
+                    projectId,
+                    pushId,
+                }),
+                condition: (result) => wait ? !['pending', 'running'].includes(result.status['preview'].deploy.status) : true,
+                onConditionNotMet: (lastResult) => {
                     displayDeploymentAndBuildStatus({
                         status: lastResult.status['preview'].deploy.status,
-                        previewUrl: lastResult.status['preview'].deploy.url,
+                        url: lastResult.status['preview'].deploy.url,
                         spinner,
                         buildType: 'preview',
-                        ignoreDeploymentFailures,
+                        continueOnDeploymentFailures,
                         wait,
                     });
-                    (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                 },
-                onTimeOutExceeded: () => {
-                    spinner.stop();
-                },
+                startTime,
+                retryTimeoutMs: retryTimeoutMs,
+                retryIntervalMs: RETRY_INTERVAL_MS,
             });
             printPushStatus({
                 buildType: 'preview',
                 spinner,
                 wait,
                 push: previewPushData,
-                ignoreDeploymentFailures,
+                continueOnDeploymentFailures,
             });
             printScorecard(previewPushData.status.preview.scorecard);
-            const fetchProdPushDatCondition = previewPushData.isMainBranch &&
+            const fetchProdPushDataCondition = previewPushData.isMainBranch &&
                 (wait ? previewPushData.status.preview.deploy.status === 'success' : true);
-            const prodPushData = fetchProdPushDatCondition
-                ? yield getPushData({
-                    orgId,
-                    projectId,
-                    pushId,
-                    wait,
-                    client,
-                    buildType: 'production',
-                    startTime,
-                    retryTimeoutMs,
-                    onRetry: (lastResult) => {
-                        var _a;
+            const prodPushData = fetchProdPushDataCondition
+                ? yield (0, utils_2.retryUntilConditionMet)({
+                    operation: () => client.remotes.getPush({
+                        organizationId: orgId,
+                        projectId,
+                        pushId,
+                    }),
+                    condition: (result) => wait
+                        ? !['pending', 'running'].includes(result.status['production'].deploy.status)
+                        : true,
+                    onConditionNotMet: (lastResult) => {
                         displayDeploymentAndBuildStatus({
                             status: lastResult.status['production'].deploy.status,
-                            previewUrl: lastResult.status['production'].deploy.url,
+                            url: lastResult.status['production'].deploy.url,
                             spinner,
                             buildType: 'production',
-                            ignoreDeploymentFailures,
+                            continueOnDeploymentFailures: continueOnDeploymentFailures,
                             wait,
                         });
-                        (_a = argv === null || argv === void 0 ? void 0 : argv.onRetry) === null || _a === void 0 ? void 0 : _a.call(argv, lastResult);
                     },
-                    onTimeOutExceeded: () => {
-                        spinner.stop();
-                    },
+                    startTime,
+                    retryTimeoutMs: retryTimeoutMs,
+                    retryIntervalMs: RETRY_INTERVAL_MS,
                 })
                 : null;
             printPushStatus({
@@ -12378,7 +12372,7 @@ function handlePushStatus(argv, config) {
                 spinner,
                 wait,
                 push: prodPushData,
-                ignoreDeploymentFailures,
+                continueOnDeploymentFailures: continueOnDeploymentFailures,
             });
             printScorecard((_b = (_a = prodPushData === null || prodPushData === void 0 ? void 0 : prodPushData.status) === null || _a === void 0 ? void 0 : _a.production) === null || _b === void 0 ? void 0 : _b.scorecard);
             printPushStatusInfo({ orgId, projectId, pushId, startedAt });
@@ -12404,11 +12398,15 @@ function handlePushStatus(argv, config) {
             return summary;
         }
         catch (err) {
+            spinner.stop(); // Spinner can block process exit, so we need to stop it explicitly.
             const message = err instanceof utils_1.DeploymentError
                 ? err.message
                 : `✗ Failed to get push status. Reason: ${err.message}\n`;
             (0, miscellaneous_1.exitWithError)(message);
             return;
+        }
+        finally {
+            spinner.stop(); // Spinner can block process exit, so we need to stop it explicitly.
         }
     });
 }
@@ -12417,25 +12415,7 @@ function printPushStatusInfo({ orgId, projectId, pushId, startedAt, }) {
     process.stderr.write(`\nProcessed push-status for ${colors.yellow(orgId)}, ${colors.yellow(projectId)} and pushID ${colors.yellow(pushId)}.\n`);
     (0, miscellaneous_1.printExecutionTime)('push-status', startedAt, 'Finished');
 }
-function getPushData({ orgId, projectId, pushId, wait, client, buildType, startTime, retryTimeoutMs, onRetry, onTimeOutExceeded, }) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const pushData = yield (0, utils_2.retryUntilConditionMet)({
-            operation: () => client.remotes.getPush({
-                organizationId: orgId,
-                projectId,
-                pushId,
-            }),
-            condition: (result) => wait ? !['pending', 'running'].includes(result.status[buildType].deploy.status) : true,
-            onRetry,
-            onTimeOutExceeded,
-            startTime,
-            retryTimeoutMs: retryTimeoutMs,
-            retryIntervalMs: RETRY_INTERVAL_MS,
-        });
-        return pushData;
-    });
-}
-function printPushStatus({ buildType, spinner, push, ignoreDeploymentFailures, }) {
+function printPushStatus({ buildType, spinner, push, continueOnDeploymentFailures, }) {
     if (!push) {
         return;
     }
@@ -12445,10 +12425,10 @@ function printPushStatus({ buildType, spinner, push, ignoreDeploymentFailures, }
     else {
         displayDeploymentAndBuildStatus({
             status: push.status[buildType].deploy.status,
-            previewUrl: push.status[buildType].deploy.url,
+            url: push.status[buildType].deploy.url,
             buildType,
             spinner,
-            ignoreDeploymentFailures,
+            continueOnDeploymentFailures,
         });
     }
 }
@@ -12466,9 +12446,9 @@ function printScorecard(scorecard) {
     }
     process.stdout.write(`\n`);
 }
-function displayDeploymentAndBuildStatus({ status, previewUrl, spinner, buildType, ignoreDeploymentFailures, wait, }) {
-    const message = getMessage({ status, previewUrl, buildType, wait });
-    if (status === 'failed' && !ignoreDeploymentFailures) {
+function displayDeploymentAndBuildStatus({ status, url, spinner, buildType, continueOnDeploymentFailures, wait, }) {
+    const message = getMessage({ status, url, buildType, wait });
+    if (status === 'failed' && !continueOnDeploymentFailures) {
         spinner.stop();
         throw new utils_1.DeploymentError(message);
     }
@@ -12478,7 +12458,7 @@ function displayDeploymentAndBuildStatus({ status, previewUrl, spinner, buildTyp
     spinner.stop();
     return process.stdout.write(message);
 }
-function getMessage({ status, previewUrl, buildType, wait, }) {
+function getMessage({ status, url, buildType, wait, }) {
     switch (status) {
         case 'skipped':
             return `${colors.yellow(`Skipped ${buildType}`)}\n`;
@@ -12493,9 +12473,9 @@ function getMessage({ status, previewUrl, buildType, wait, }) {
             }
             return `Status: ${colors.yellow(`Running ${buildType}`)}\n`;
         case 'success':
-            return `${colors.green(`🚀 ${(0, js_utils_1.capitalize)(buildType)} deploy succeed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(previewUrl)}\n`;
+            return `${colors.green(`🚀 ${(0, js_utils_1.capitalize)(buildType)} deploy succeed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(url || '')}\n`;
         case 'failed':
-            return `${colors.red(`❌ ${(0, js_utils_1.capitalize)(buildType)} deploy failed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(previewUrl)}`;
+            return `${colors.red(`❌ ${(0, js_utils_1.capitalize)(buildType)} deploy failed.`)}\n${colors.magenta(`${(0, js_utils_1.capitalize)(buildType)} URL`)}: ${colors.cyan(url || '')}`;
     }
 }
 
@@ -12586,7 +12566,7 @@ function handlePush(argv, config) {
                     domain,
                     'max-execution-time': maxExecutionTime,
                     'start-time': startTime,
-                    'ignore-deployment-failures': argv['ignore-deployment-failures'],
+                    'continue-on-deployment-failures': argv['continue-on-deployment-failures'],
                 }, config);
             }
             verbose &&
@@ -12680,9 +12660,20 @@ function wait(ms) {
     });
 }
 exports.wait = wait;
-function retryUntilConditionMet({ operation, condition, startTime = Date.now(), retryTimeoutMs = 600000, // 10 min
+/**
+ * This function retries an operation until a condition is met or a timeout is exceeded.
+ * If the condition is not met within the timeout, an error is thrown.
+ * @operation The operation to retry.
+ * @condition The condition to check after each operation result.
+ * @param onConditionNotMet Will be called with the last result right after checking condition and before timeout and retrying.
+ * @param onRetry Will be called right before retrying operation with the last result before retrying.
+ * @param startTime The start time of the operation. Default is the current time.
+ * @param retryTimeoutMs The maximum time to retry the operation. Default is 10 minutes.
+ * @param retryIntervalMs The interval between retries. Default is 5 seconds.
+ */
+function retryUntilConditionMet({ operation, condition, onConditionNotMet, onRetry, startTime = Date.now(), retryTimeoutMs = 600000, // 10 min
 retryIntervalMs = 5000, // 5 sec
-onRetry, onTimeOutExceeded, }) {
+ }) {
     return __awaiter(this, void 0, void 0, function* () {
         function attempt() {
             return __awaiter(this, void 0, void 0, function* () {
@@ -12691,12 +12682,12 @@ onRetry, onTimeOutExceeded, }) {
                     return result;
                 }
                 else if (Date.now() - startTime > retryTimeoutMs) {
-                    onTimeOutExceeded === null || onTimeOutExceeded === void 0 ? void 0 : onTimeOutExceeded();
                     throw new Error('Timeout exceeded');
                 }
                 else {
-                    onRetry === null || onRetry === void 0 ? void 0 : onRetry(result);
+                    onConditionNotMet === null || onConditionNotMet === void 0 ? void 0 : onConditionNotMet(result);
                     yield wait(retryIntervalMs);
+                    onRetry === null || onRetry === void 0 ? void 0 : onRetry(result);
                     return attempt();
                 }
             });
@@ -76130,7 +76121,7 @@ exports.newMap = newMap;
 
 /***/ }),
 
-/***/ 70399:
+/***/ 43015:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -76162,90 +76153,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.run = void 0;
+exports.getRedoclyConfig = exports.parseEventData = exports.parseInputData = void 0;
 const path_1 = __importDefault(__nccwpck_require__(71017));
 const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
-const push_1 = __nccwpck_require__(8893);
-const push_status_1 = __nccwpck_require__(74229);
 const openapi_core_1 = __nccwpck_require__(59307);
-const set_commit_statuses_1 = __nccwpck_require__(55467);
-async function run() {
-    try {
-        const inputData = parseInputData();
-        const ghEvent = parseEventData();
-        // eslint-disable-next-line no-console
-        console.debug('Push arguments', {
-            redocly: {
-                redoclyOrgSlug: inputData.redoclyOrgSlug,
-                redoclyProjectSlug: inputData.redoclyProjectSlug,
-                redoclyDomain: inputData.redoclyDomain
-            },
-            github: ghEvent,
-            pushParams: {
-                files: inputData.files,
-                mountPath: inputData.mountPath,
-                maxExecutionTime: inputData.maxExecutionTime,
-                configPath: inputData.configPath
-            }
-        });
-        const config = await getRedoclyConfig(inputData.configPath);
-        if (!ghEvent.branch ||
-            !ghEvent.defaultBranch ||
-            !ghEvent.commit.commitMessage ||
-            !ghEvent.commit.commitSha ||
-            !ghEvent.commit.commitAuthor ||
-            !ghEvent.namespace ||
-            !ghEvent.repository) {
-            throw new Error('Invalid GitHub event data');
-        }
-        const pushData = await (0, push_1.handlePush)({
-            organization: inputData.redoclyOrgSlug,
-            project: inputData.redoclyProjectSlug,
-            domain: inputData.redoclyDomain,
-            'mount-path': inputData.mountPath,
-            files: inputData.files,
-            'max-execution-time': inputData.maxExecutionTime,
-            namespace: ghEvent.namespace,
-            repository: ghEvent.repository,
-            branch: ghEvent.branch,
-            'default-branch': ghEvent.defaultBranch,
-            message: ghEvent.commit.commitMessage,
-            'commit-sha': ghEvent.commit.commitSha,
-            'commit-url': ghEvent.commit.commitUrl,
-            author: ghEvent.commit.commitAuthor,
-            'created-at': ghEvent.commit.commitCreatedAt
-        }, config);
-        if (pushData) {
-            const pushStatusData = await (0, push_status_1.handlePushStatus)({
-                organization: inputData.redoclyOrgSlug,
-                project: inputData.redoclyProjectSlug,
-                pushId: pushData.pushId,
-                domain: inputData.redoclyDomain,
-                'max-execution-time': inputData.maxExecutionTime,
-                'ignore-deployment-failures': true,
-                wait: true
-            }, config);
-            if (!pushStatusData) {
-                throw new Error('Missing push status data');
-            }
-            await (0, set_commit_statuses_1.setCommitStatuses)({
-                data: pushStatusData,
-                owner: ghEvent.namespace,
-                repo: ghEvent.repository,
-                commitId: ghEvent.commit.commitSha,
-                organizationSlug: inputData.redoclyOrgSlug,
-                projectSlug: inputData.redoclyProjectSlug
-            });
-            core.setOutput('pushId', pushData.pushId);
-        }
-    }
-    catch (error) {
-        if (error instanceof Error)
-            core.setFailed(error.message);
-    }
-}
-exports.run = run;
 function parseInputData() {
     const redoclyOrgSlug = core.getInput('organization');
     const redoclyProjectSlug = core.getInput('project');
@@ -76253,7 +76165,9 @@ function parseInputData() {
     const files = core.getInput('files').split(' ');
     const mountPath = core.getInput('mountPath');
     const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
-    const configPath = core.getInput('configPath');
+    const redoclyConfigPath = core.getInput('redoclyConfigPath');
+    const disableCommitStatusPrefix = core.getInput('disableCommitStatusPrefix') === 'true';
+    const customCommitStatusPrefix = core.getInput('customCommitStatusPrefix') || undefined;
     const absoluteFilePaths = files.map(_path => path_1.default.join(process.env.GITHUB_WORKSPACE || '', _path));
     return {
         redoclyOrgSlug,
@@ -76262,9 +76176,12 @@ function parseInputData() {
         files: absoluteFilePaths,
         mountPath,
         maxExecutionTime,
-        configPath
+        redoclyConfigPath,
+        disableCommitStatusPrefix,
+        customCommitStatusPrefix
     };
 }
+exports.parseInputData = parseInputData;
 function parseEventData() {
     const namespace = github.context.payload?.repository?.owner?.login;
     const repository = github.context.payload?.repository?.name;
@@ -76293,6 +76210,7 @@ function parseEventData() {
         }
     };
 }
+exports.parseEventData = parseEventData;
 async function getRedoclyConfig(configPath) {
     const redoclyConfig = await (0, openapi_core_1.loadConfig)({
         configPath: configPath && process.env.GITHUB_WORKSPACE
@@ -76301,6 +76219,115 @@ async function getRedoclyConfig(configPath) {
     });
     return redoclyConfig;
 }
+exports.getRedoclyConfig = getRedoclyConfig;
+
+
+/***/ }),
+
+/***/ 70399:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = void 0;
+const core = __importStar(__nccwpck_require__(42186));
+const push_1 = __nccwpck_require__(8893);
+const push_status_1 = __nccwpck_require__(74229);
+const set_commit_statuses_1 = __nccwpck_require__(55467);
+const helpers_1 = __nccwpck_require__(43015);
+async function run() {
+    try {
+        const inputData = (0, helpers_1.parseInputData)();
+        const ghEvent = (0, helpers_1.parseEventData)();
+        // eslint-disable-next-line no-console
+        console.debug('Push arguments', {
+            inputData,
+            ghEvent
+        });
+        const config = await (0, helpers_1.getRedoclyConfig)(inputData.redoclyConfigPath);
+        if (!ghEvent.branch ||
+            !ghEvent.defaultBranch ||
+            !ghEvent.commit.commitMessage ||
+            !ghEvent.commit.commitSha ||
+            !ghEvent.commit.commitAuthor ||
+            !ghEvent.namespace ||
+            !ghEvent.repository) {
+            throw new Error('Invalid GitHub event data');
+        }
+        const pushData = await (0, push_1.handlePush)({
+            domain: inputData.redoclyDomain,
+            organization: inputData.redoclyOrgSlug,
+            project: inputData.redoclyProjectSlug,
+            'mount-path': inputData.mountPath,
+            files: inputData.files,
+            'max-execution-time': inputData.maxExecutionTime,
+            namespace: ghEvent.namespace,
+            repository: ghEvent.repository,
+            branch: ghEvent.branch,
+            'default-branch': ghEvent.defaultBranch,
+            message: ghEvent.commit.commitMessage,
+            'commit-sha': ghEvent.commit.commitSha,
+            'commit-url': ghEvent.commit.commitUrl,
+            author: ghEvent.commit.commitAuthor,
+            'created-at': ghEvent.commit.commitCreatedAt
+        }, config);
+        if (!pushData?.pushId) {
+            throw new Error('Missing push ID');
+        }
+        const pushStatusData = await (0, push_status_1.handlePushStatus)({
+            organization: inputData.redoclyOrgSlug,
+            project: inputData.redoclyProjectSlug,
+            pushId: pushData.pushId,
+            domain: inputData.redoclyDomain,
+            wait: true,
+            'continue-on-deployment-failures': true,
+            'max-execution-time': inputData.maxExecutionTime
+        }, config);
+        if (!pushStatusData) {
+            throw new Error('Missing push status data');
+        }
+        await (0, set_commit_statuses_1.setCommitStatuses)({
+            data: pushStatusData,
+            owner: ghEvent.namespace,
+            repo: ghEvent.repository,
+            commitId: ghEvent.commit.commitSha,
+            organizationSlug: inputData.redoclyOrgSlug,
+            projectSlug: inputData.redoclyProjectSlug,
+            disableCommitStatusPrefix: inputData.disableCommitStatusPrefix,
+            customCommitStatusPrefix: inputData.customCommitStatusPrefix
+        });
+        core.setOutput('pushId', pushData.pushId);
+    }
+    catch (error) {
+        if (error instanceof Error)
+            core.setFailed(error.message);
+    }
+}
+exports.run = run;
 
 
 /***/ }),
@@ -76337,15 +76364,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setCommitStatuses = void 0;
 const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
-async function setCommitStatuses({ data, owner, repo, commitId, organizationSlug, projectSlug }) {
-    const addPrefix = 'true'; // TODO: get from input
-    const customPrefix = undefined; // TODO: get from input
-    const shouldAddPrefix = addPrefix === 'true';
+async function setCommitStatuses({ data, owner, repo, commitId, organizationSlug, projectSlug, disableCommitStatusPrefix, customCommitStatusPrefix }) {
     const defaultPrefix = `${organizationSlug}/${projectSlug}`;
     const prefixDelimiter = ' - ';
-    const statusPrefix = shouldAddPrefix
-        ? `${customPrefix || defaultPrefix}${prefixDelimiter}`
-        : '';
+    const statusPrefix = disableCommitStatusPrefix
+        ? ''
+        : `${customCommitStatusPrefix || defaultPrefix}${prefixDelimiter}`;
     const githubToken = core.getInput('githubToken');
     const octokit = github.getOctokit(githubToken);
     if (data?.preview) {
@@ -76359,7 +76383,8 @@ async function setCommitStatuses({ data, owner, repo, commitId, organizationSlug
         });
     }
     if (data?.preview?.scorecard) {
-        Promise.all(data.preview.scorecard.map(async (scorecard) => {
+        // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
+        await Promise.all(data.preview.scorecard.map(async (scorecard) => {
             await octokit.rest.repos.createCommitStatus({
                 owner,
                 repo,
@@ -76382,7 +76407,8 @@ async function setCommitStatuses({ data, owner, repo, commitId, organizationSlug
         });
     }
     if (data?.production?.scorecard) {
-        Promise.all(data.production.scorecard.map(async (scorecard) => {
+        // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
+        await Promise.all(data.production.scorecard.map(async (scorecard) => {
             await octokit.rest.repos.createCommitStatus({
                 owner,
                 repo,
@@ -78475,7 +78501,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.10.6","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"./openapi-core.tgz","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
+module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.11.0","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"./openapi-core.tgz","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
 
 /***/ }),
 

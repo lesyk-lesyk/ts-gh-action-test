@@ -13,8 +13,8 @@ export async function run(): Promise<void> {
 
     // eslint-disable-next-line no-console
     console.debug('Push arguments', {
-      inputData: inputData,
-      githubEventData: ghEvent
+      inputData,
+      ghEvent
     });
 
     const config = await getRedoclyConfig(inputData.redoclyConfigPath);
@@ -63,7 +63,7 @@ export async function run(): Promise<void> {
         pushId: pushData.pushId,
         domain: inputData.redoclyDomain,
         wait: true,
-        'ignore-deployment-failures': true,
+        'continue-on-deployment-failures': true,
         'max-execution-time': inputData.maxExecutionTime
       },
       config
