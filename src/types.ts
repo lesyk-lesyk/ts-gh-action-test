@@ -6,8 +6,6 @@ export interface ParsedInputData {
   mountPath: string;
   maxExecutionTime: number;
   redoclyConfigPath?: string;
-  disableCommitStatusPrefix: boolean;
-  customCommitStatusPrefix?: string;
 }
 
 export interface ParsedEventData {

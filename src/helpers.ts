@@ -13,10 +13,6 @@ export function parseInputData(): ParsedInputData {
   const mountPath = core.getInput('mountPath');
   const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
   const redoclyConfigPath = core.getInput('redoclyConfigPath');
-  const disableCommitStatusPrefix =
-    core.getInput('disableCommitStatusPrefix') === 'true';
-  const customCommitStatusPrefix =
-    core.getInput('customCommitStatusPrefix') || undefined;
 
   const absoluteFilePaths = files.map(_path =>
     path.join(process.env.GITHUB_WORKSPACE || '', _path)
@@ -29,9 +25,7 @@ export function parseInputData(): ParsedInputData {
     files: absoluteFilePaths,
     mountPath,
     maxExecutionTime,
-    redoclyConfigPath,
-    disableCommitStatusPrefix,
-    customCommitStatusPrefix
+    redoclyConfigPath
   };
 }
 

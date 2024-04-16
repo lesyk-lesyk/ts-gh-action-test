@@ -10,9 +10,7 @@ export async function setCommitStatuses({
   repo,
   commitId,
   organizationSlug,
-  projectSlug,
-  disableCommitStatusPrefix,
-  customCommitStatusPrefix
+  projectSlug
 }: {
   data: PushStatusSummary;
   owner: string;
@@ -20,15 +18,8 @@ export async function setCommitStatuses({
   commitId: string;
   organizationSlug: string;
   projectSlug: string;
-  disableCommitStatusPrefix: boolean;
-  customCommitStatusPrefix?: string;
 }): Promise<void> {
-  const defaultPrefix = `${organizationSlug}/${projectSlug}`;
-  const prefixDelimiter = ' - ';
-  const statusPrefix = disableCommitStatusPrefix
-    ? ''
-    : `${customCommitStatusPrefix || defaultPrefix}${prefixDelimiter}`;
-
+  const scope = `(${organizationSlug}/${projectSlug})`;
   const githubToken = core.getInput('githubToken');
   const octokit = github.getOctokit(githubToken);
 
@@ -39,7 +30,7 @@ export async function setCommitStatuses({
       sha: commitId,
       state: mapDeploymentStateToGithubCommitState(data.preview.status),
       target_url: data.preview.url,
-      context: `${statusPrefix}Preview`
+      context: `Preview ${scope}`
     });
   }
 
@@ -53,7 +44,7 @@ export async function setCommitStatuses({
           sha: commitId,
           state: mapDeploymentStateToGithubCommitState(scorecard.status),
           target_url: scorecard.url,
-          context: `${statusPrefix}${scorecard.name}`,
+          context: scorecard.name,
           description: scorecard.description
         });
       })
@@ -67,7 +58,7 @@ export async function setCommitStatuses({
       sha: commitId,
       state: mapDeploymentStateToGithubCommitState(data.production.status),
       target_url: data.production.url,
-      context: `${statusPrefix}Production`
+      context: `Production ${scope}`
     });
   }
 
@@ -83,7 +74,7 @@ export async function setCommitStatuses({
           sha: commitId,
           state: mapDeploymentStateToGithubCommitState(scorecard.status),
           target_url: scorecard.url,
-          context: `${statusPrefix}${scorecard.name}`,
+          context: scorecard.name,
           description: scorecard.description
         });
       })

@@ -79,9 +79,7 @@ export async function run(): Promise<void> {
       repo: ghEvent.repository,
       commitId: ghEvent.commit.commitSha,
       organizationSlug: inputData.redoclyOrgSlug,
-      projectSlug: inputData.redoclyProjectSlug,
-      disableCommitStatusPrefix: inputData.disableCommitStatusPrefix,
-      customCommitStatusPrefix: inputData.customCommitStatusPrefix
+      projectSlug: inputData.redoclyProjectSlug
     });
 
     core.setOutput('pushId', pushData.pushId);
