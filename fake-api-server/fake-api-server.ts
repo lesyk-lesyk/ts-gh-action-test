@@ -25,16 +25,16 @@ const stubResponseStatus: PushResponse = {
     },
     statuses: [
       {
-        name: 'preview',
-        description: 'test-preview-description',
+        name: 'CI Test (Test Status 1)',
+        description: 'Test description 1',
         status: 'success',
-        url: 'https://preview-test-url'
+        url: 'https://test-url-01'
       },
       {
-        name: 'production',
-        description: 'test-production-description',
+        name: 'CI Test (Test Status 2)',
+        description: 'Test description 1',
         status: 'success',
-        url: 'https://production-test-url'
+        url: 'https://test-url-01'
       }
     ]
   },
