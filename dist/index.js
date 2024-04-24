@@ -76644,7 +76644,7 @@ const github = __importStar(__nccwpck_require__(95438));
 async function setCommitStatuses({ data, owner, repo, commitId }) {
     const githubToken = core.getInput('githubToken');
     const octokit = github.getOctokit(githubToken);
-    if (data.commit.statuses.length > 0) {
+    if (data.commit.statuses?.length > 0) {
         // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
         await Promise.all(data.commit.statuses.map(async (status) => {
             await octokit.rest.repos.createCommitStatus({
