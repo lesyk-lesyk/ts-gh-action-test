@@ -64,7 +64,15 @@ export async function run(): Promise<void> {
         domain: inputData.redoclyDomain,
         wait: true,
         'continue-on-deploy-failures': true,
-        'max-execution-time': inputData.maxExecutionTime
+        'max-execution-time': inputData.maxExecutionTime,
+        onRetry: lastResult => {
+          setCommitStatuses({
+            data: lastResult,
+            owner: ghEvent.namespace!, // TODO: remove the `!` operator
+            repo: ghEvent.repository!, // TODO: remove the `!` operator
+            commitId: ghEvent.commit.commitSha! // TODO: remove the `!` operator
+          });
+        }
       },
       config
     );
@@ -77,9 +85,7 @@ export async function run(): Promise<void> {
       data: pushStatusData,
       owner: ghEvent.namespace,
       repo: ghEvent.repository,
-      commitId: ghEvent.commit.commitSha,
-      organizationSlug: inputData.redoclyOrgSlug,
-      projectSlug: inputData.redoclyProjectSlug
+      commitId: ghEvent.commit.commitSha
     });
 
     core.setOutput('pushId', pushData.pushId);

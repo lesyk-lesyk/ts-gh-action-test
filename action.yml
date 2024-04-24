@@ -25,7 +25,7 @@ inputs:
     description: 'Your remote content mount path'
     required: true
   maxExecutionTime:
-    description: 'Max execution time in milliseconds'
+    description: 'Max execution time in seconds'
     required: false
   redoclyConfigPath:
     description: 'Path to the redocly config file'

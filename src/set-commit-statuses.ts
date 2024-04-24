@@ -8,74 +8,28 @@ export async function setCommitStatuses({
   data,
   owner,
   repo,
-  commitId,
-  organizationSlug,
-  projectSlug
+  commitId
 }: {
   data: PushStatusSummary;
   owner: string;
   repo: string;
   commitId: string;
-  organizationSlug: string;
-  projectSlug: string;
 }): Promise<void> {
-  const scope = `(${organizationSlug}/${projectSlug})`;
   const githubToken = core.getInput('githubToken');
   const octokit = github.getOctokit(githubToken);
 
-  if (data?.preview) {
-    await octokit.rest.repos.createCommitStatus({
-      owner,
-      repo,
-      sha: commitId,
-      state: mapDeploymentStateToGithubCommitState(data.preview.status),
-      target_url: data.preview.url,
-      context: `Preview ${scope}`
-    });
-  }
-
-  if (data?.preview?.scorecard) {
+  if (data.commit.statuses.length > 0) {
     // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
     await Promise.all(
-      data.preview.scorecard.map(async scorecard => {
+      data.commit.statuses.map(async status => {
         await octokit.rest.repos.createCommitStatus({
           owner,
           repo,
           sha: commitId,
-          state: mapDeploymentStateToGithubCommitState(scorecard.status),
-          target_url: scorecard.url,
-          context: scorecard.name,
-          description: scorecard.description
-        });
-      })
-    );
-  }
-
-  if (data?.production) {
-    await octokit.rest.repos.createCommitStatus({
-      owner,
-      repo,
-      sha: commitId,
-      state: mapDeploymentStateToGithubCommitState(data.production.status),
-      target_url: data.production.url,
-      context: `Production ${scope}`
-    });
-  }
-
-  // Q1: Do we need scorecard for preview and production?
-  // Q2: Do we need prefix for scorecard?
-  if (data?.production?.scorecard) {
-    // TBD: Should we add a concurrency limit here to avoid hitting rate limits?
-    await Promise.all(
-      data.production.scorecard.map(async scorecard => {
-        await octokit.rest.repos.createCommitStatus({
-          owner,
-          repo,
-          sha: commitId,
-          state: mapDeploymentStateToGithubCommitState(scorecard.status),
-          target_url: scorecard.url,
-          context: scorecard.name,
-          description: scorecard.description
+          state: mapDeploymentStateToGithubCommitState(status.status),
+          target_url: status.url,
+          context: status.name,
+          description: status.description
         });
       })
     );
