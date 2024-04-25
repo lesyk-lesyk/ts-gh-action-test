@@ -12701,7 +12701,7 @@ retryIntervalMs = 5000, // 5 sec
                 else {
                     onConditionNotMet === null || onConditionNotMet === void 0 ? void 0 : onConditionNotMet(result);
                     yield (0, openapi_core_1.pause)(retryIntervalMs);
-                    onRetry === null || onRetry === void 0 ? void 0 : onRetry(result);
+                    onRetry instanceof Promise ? yield (onRetry === null || onRetry === void 0 ? void 0 : onRetry(result)) : onRetry === null || onRetry === void 0 ? void 0 : onRetry(result);
                     return attempt();
                 }
             });
@@ -76579,13 +76579,18 @@ async function run() {
             wait: true,
             'continue-on-deploy-failures': true,
             'max-execution-time': inputData.maxExecutionTime,
-            onRetry: lastResult => {
-                (0, set_commit_statuses_1.setCommitStatuses)({
-                    data: lastResult,
-                    owner: ghEvent.namespace, // TODO: remove the `!` operator
-                    repo: ghEvent.repository, // TODO: remove the `!` operator
-                    commitId: ghEvent.commit.commitSha // TODO: remove the `!` operator
-                });
+            onRetry: async (lastResult) => {
+                try {
+                    (0, set_commit_statuses_1.setCommitStatuses)({
+                        data: lastResult,
+                        owner: ghEvent.namespace, // TODO: remove the `!` operator
+                        repo: ghEvent.repository, // TODO: remove the `!` operator
+                        commitId: ghEvent.commit.commitSha // TODO: remove the `!` operator
+                    });
+                }
+                catch (error) {
+                    core.error(`Failed to set commit statuses. Error: ${error?.message}`);
+                }
             }
         }, config);
         if (!pushStatusData) {
@@ -78739,7 +78744,7 @@ module.exports = JSON.parse('{"$schema":"https://json-schema.org/draft/2020-12/s
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.11.0-alpha.0","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"1.11.0-alpha.0","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
+module.exports = JSON.parse('{"name":"@redocly/cli","version":"1.11.0-alpha.1","description":"","license":"MIT","bin":{"openapi":"bin/cli.js","redocly":"bin/cli.js"},"engines":{"node":">=14.19.0","npm":">=7.0.0"},"engineStrict":true,"scripts":{"compile":"tsc","copy-assets":"cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ","prepack":"npm run copy-assets","prepublishOnly":"npm run copy-assets && cp ../../README.md ."},"repository":{"type":"git","url":"https://github.com/Redocly/redocly-cli.git"},"homepage":"https://github.com/Redocly/redocly-cli","keywords":["linter","OpenAPI","Swagger","OpenAPI linter","Swagger linter","AsyncAPI linter","oas"],"contributors":["Roman Hotsiy <roman@redoc.ly> (https://redoc.ly/)"],"dependencies":{"@redocly/openapi-core":"1.11.0-alpha.0","abort-controller":"^3.0.0","chokidar":"^3.5.1","colorette":"^1.2.0","core-js":"^3.32.1","form-data":"^4.0.0","get-port-please":"^3.0.1","glob":"^7.1.6","handlebars":"^4.7.6","mobx":"^6.0.4","node-fetch":"^2.6.1","react":"^17.0.0 || ^18.2.0","react-dom":"^17.0.0 || ^18.2.0","redoc":"~2.1.3","semver":"^7.5.2","simple-websocket":"^9.0.0","styled-components":"^6.0.7","yargs":"17.0.1"},"devDependencies":{"@types/configstore":"^5.0.1","@types/glob":"^8.1.0","@types/react":"^17.0.0 || ^18.2.21","@types/react-dom":"^17.0.0 || ^18.2.7","@types/semver":"^7.5.0","@types/yargs":"17.0.32","typescript":"^5.2.2"}}');
 
 /***/ }),
 
