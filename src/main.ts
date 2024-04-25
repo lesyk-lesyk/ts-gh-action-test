@@ -65,12 +65,14 @@ export async function run(): Promise<void> {
         wait: true,
         'continue-on-deploy-failures': true,
         'max-execution-time': inputData.maxExecutionTime,
-        onRetry: lastResult => {
+        onRetry: async(lastResult) => {
           setCommitStatuses({
             data: lastResult,
             owner: ghEvent.namespace!, // TODO: remove the `!` operator
             repo: ghEvent.repository!, // TODO: remove the `!` operator
             commitId: ghEvent.commit.commitSha! // TODO: remove the `!` operator
+          }).catch((error) => {
+            core.error('Failed to set commit statuses', error);
           });
         }
       },
