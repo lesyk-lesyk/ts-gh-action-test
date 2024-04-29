@@ -76475,7 +76475,7 @@ async function parseEventData() {
     if (!defaultBranch) {
         throw new Error('Invalid GitHub event data. Can not get default branch from the event payload.');
     }
-    const commitSha = github.context.payload.after;
+    const commitSha = getCommitSha();
     if (!commitSha) {
         throw new Error('Invalid GitHub event data. Can not get commit sha from the event payload.');
     }
@@ -76503,6 +76503,20 @@ async function parseEventData() {
     };
 }
 exports.parseEventData = parseEventData;
+function getCommitSha() {
+    if (github.context.eventName === 'push') {
+        return github.context.payload.after;
+    }
+    if (github.context.eventName === 'pull_request') {
+        if (github.context.payload.action === 'opened') {
+            return github.context.payload.pull_request?.head.repo.sha;
+        }
+        if (github.context.payload.action === 'synchronize') {
+            return github.context.payload.after;
+        }
+    }
+    // TBD: what about other cases?
+}
 async function getRedoclyConfig(configPath) {
     const redoclyConfig = await (0, openapi_core_1.loadConfig)({
         configPath: configPath && process.env.GITHUB_WORKSPACE
