@@ -24,18 +24,18 @@
     "node": ">=20"
   },
   "scripts": {
-    "bundle": "npm run format:write && npm run package",
-    "ci-test": "npx jest",
-    "coverage": "npx make-coverage-badge --output-path ./badges/coverage.svg",
-    "format:write": "npx prettier --write .",
-    "format:check": "npx prettier --check .",
+    "all": "npm run prettier:write && npm run lint && npm run test && npm run coverage && npm run package",
+    "prettier:check": "npx prettier --check .",
+    "prettier:write": "npx prettier --write .",
     "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
+    "test": "npm run test:unit",
+    "test:unit": "npx jest",
+    "coverage": "npx make-coverage-badge --output-path ./badges/coverage.svg",
     "package": "npx ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "package:watch": "npm run package -- --watch",
-    "test": "npx jest",
+    "bundle": "npm run prettier:write && npm run package",
     "compile-fake-server": "tsc -p tsconfig.fake-server.json",
-    "fake-server:start": "npm run compile-fake-server && pm2 start ./fake-api-server/.dist/fake-api-server.js",
-    "all": "npm run format:write && npm run lint && npm run test && npm run coverage && npm run package"
+    "fake-server:start": "npm run compile-fake-server && pm2 start ./fake-api-server/.dist/fake-api-server.js"
   },
   "license": "MIT",
   "jest": {

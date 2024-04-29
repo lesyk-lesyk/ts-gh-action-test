@@ -29,38 +29,78 @@ export function parseInputData(): ParsedInputData {
   };
 }
 
-export function parseEventData(): ParsedEventData {
-  console.log('>>> github.context', JSON.stringify(github.context, null, 2));
+export async function parseEventData(): Promise<ParsedEventData> {
+  if (
+    !(
+      github.context.eventName === 'push' ||
+      github.context.eventName === 'pull_request'
+    )
+  ) {
+    throw new Error(
+      'Unsupported GitHub event type. Only "push" and "pull_request" events are supported.'
+    );
+  }
   const namespace = github.context.payload?.repository?.owner?.login;
   const repository = github.context.payload?.repository?.name;
 
-  const branch = github.context.ref.split('/').pop();
+  if (!namespace || !repository) {
+    throw new Error(
+      'Invalid GitHub event data. Can not get owner or repository name from the event payload.'
+    );
+  }
+
+  const branch =
+    github.context.payload.pull_request?.['head']?.['ref'] ||
+    github.context.ref.split('/').pop();
+
+  if (!branch) {
+    throw new Error(
+      'Invalid GitHub event data. Can not get branch from the event payload.'
+    );
+  }
+
   const defaultBranch: string | undefined =
     github.context.payload?.repository?.default_branch ||
     github.context.payload?.repository?.master_branch;
 
-  const headCommit = github.context.payload?.head_commit;
-  const commitMessage: string | undefined = headCommit?.message;
-  const commitSha: string | undefined = headCommit?.id;
-  const commitUrl: string | undefined = headCommit?.url;
-  const commitAuthor: string | undefined =
-    headCommit?.author?.name && headCommit?.author?.email
-      ? `${headCommit?.author?.name} <${headCommit?.author?.email}>`
-      : undefined;
-  const commitCreatedAt: string | undefined = headCommit?.timestamp;
+  if (!defaultBranch) {
+    throw new Error(
+      'Invalid GitHub event data. Can not get default branch from the event payload.'
+    );
+  }
+
+  const commitSha: string | undefined = github.context.payload.after;
+
+  if (!commitSha) {
+    throw new Error(
+      'Invalid GitHub event data. Can not get commit sha from the event payload.'
+    );
+  }
+
+  const githubToken = core.getInput('githubToken');
+  const octokit = github.getOctokit(githubToken);
+
+  const { data: commitData } = await octokit.rest.repos.getCommit({
+    owner: namespace,
+    repo: repository,
+    ref: commitSha
+  });
+
+  const commit: ParsedEventData['commit'] = {
+    commitSha,
+    commitMessage: commitData.commit.message,
+    commitUrl: commitData.html_url,
+    commitAuthor: `${commitData.commit.author?.name} <${commitData.commit.author?.email}>`, // what about undefined name or email?
+    commitCreatedAt: commitData.commit.author?.date
+  };
 
   return {
+    eventName: github.context.eventName,
     namespace,
     repository,
     branch,
     defaultBranch,
-    commit: {
-      commitMessage,
-      commitSha,
-      commitUrl,
-      commitAuthor,
-      commitCreatedAt
-    }
+    commit
   };
 }
 

@@ -76455,33 +76455,51 @@ function parseInputData() {
     };
 }
 exports.parseInputData = parseInputData;
-function parseEventData() {
-    console.log('>>> github.context', JSON.stringify(github.context, null, 2));
+async function parseEventData() {
+    if (!(github.context.eventName === 'push' ||
+        github.context.eventName === 'pull_request')) {
+        throw new Error('Unsupported GitHub event type. Only "push" and "pull_request" events are supported.');
+    }
     const namespace = github.context.payload?.repository?.owner?.login;
     const repository = github.context.payload?.repository?.name;
-    const branch = github.context.ref.split('/').pop();
+    if (!namespace || !repository) {
+        throw new Error('Invalid GitHub event data. Can not get owner or repository name from the event payload.');
+    }
+    const branch = github.context.payload.pull_request?.['head']?.['ref'] ||
+        github.context.ref.split('/').pop();
+    if (!branch) {
+        throw new Error('Invalid GitHub event data. Can not get branch from the event payload.');
+    }
     const defaultBranch = github.context.payload?.repository?.default_branch ||
         github.context.payload?.repository?.master_branch;
-    const headCommit = github.context.payload?.head_commit;
-    const commitMessage = headCommit?.message;
-    const commitSha = headCommit?.id;
-    const commitUrl = headCommit?.url;
-    const commitAuthor = headCommit?.author?.name && headCommit?.author?.email
-        ? `${headCommit?.author?.name} <${headCommit?.author?.email}>`
-        : undefined;
-    const commitCreatedAt = headCommit?.timestamp;
+    if (!defaultBranch) {
+        throw new Error('Invalid GitHub event data. Can not get default branch from the event payload.');
+    }
+    const commitSha = github.context.payload.after;
+    if (!commitSha) {
+        throw new Error('Invalid GitHub event data. Can not get commit sha from the event payload.');
+    }
+    const githubToken = core.getInput('githubToken');
+    const octokit = github.getOctokit(githubToken);
+    const { data: commitData } = await octokit.rest.repos.getCommit({
+        owner: namespace,
+        repo: repository,
+        ref: commitSha
+    });
+    const commit = {
+        commitSha,
+        commitMessage: commitData.commit.message,
+        commitUrl: commitData.html_url,
+        commitAuthor: `${commitData.commit.author?.name} <${commitData.commit.author?.email}>`, // what about undefined name or email?
+        commitCreatedAt: commitData.commit.author?.date
+    };
     return {
+        eventName: github.context.eventName,
         namespace,
         repository,
         branch,
         defaultBranch,
-        commit: {
-            commitMessage,
-            commitSha,
-            commitUrl,
-            commitAuthor,
-            commitCreatedAt
-        }
+        commit
     };
 }
 exports.parseEventData = parseEventData;
@@ -76536,22 +76554,13 @@ const helpers_1 = __nccwpck_require__(43015);
 async function run() {
     try {
         const inputData = (0, helpers_1.parseInputData)();
-        const ghEvent = (0, helpers_1.parseEventData)();
+        const ghEvent = await (0, helpers_1.parseEventData)();
         // eslint-disable-next-line no-console
         console.debug('Push arguments', {
             inputData,
             ghEvent
         });
         const config = await (0, helpers_1.getRedoclyConfig)(inputData.redoclyConfigPath);
-        if (!ghEvent.branch ||
-            !ghEvent.defaultBranch ||
-            !ghEvent.commit.commitMessage ||
-            !ghEvent.commit.commitSha ||
-            !ghEvent.commit.commitAuthor ||
-            !ghEvent.namespace ||
-            !ghEvent.repository) {
-            throw new Error('Invalid GitHub event data');
-        }
         const pushData = await (0, push_1.handlePush)({
             domain: inputData.redoclyDomain,
             organization: inputData.redoclyOrgSlug,
@@ -76584,9 +76593,9 @@ async function run() {
                 try {
                     (0, set_commit_statuses_1.setCommitStatuses)({
                         data: lastResult,
-                        owner: ghEvent.namespace, // TODO: remove the `!` operator
-                        repo: ghEvent.repository, // TODO: remove the `!` operator
-                        commitId: ghEvent.commit.commitSha // TODO: remove the `!` operator
+                        owner: ghEvent.namespace,
+                        repo: ghEvent.repository,
+                        commitId: ghEvent.commit.commitSha
                     });
                 }
                 catch (error) {
@@ -76597,12 +76606,14 @@ async function run() {
         if (!pushStatusData) {
             throw new Error('Missing push status data');
         }
+        console.debug('Amount of final commit statuses to set', pushStatusData.commit.statuses.length);
         await (0, set_commit_statuses_1.setCommitStatuses)({
             data: pushStatusData,
             owner: ghEvent.namespace,
             repo: ghEvent.repository,
             commitId: ghEvent.commit.commitSha
         });
+        console.debug('Action finished successfully. Push ID:', pushData.pushId);
         core.setOutput('pushId', pushData.pushId);
     }
     catch (error) {

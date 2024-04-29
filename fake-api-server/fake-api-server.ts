@@ -25,8 +25,8 @@ const stubResponseStatus: PushResponse = {
     },
     statuses: [
       {
-        name: 'CI / Commit status test',
-        description: 'Test description',
+        name: 'CI / Action smoke test [commit status]',
+        description: 'Status, which is set by action',
         status: 'success',
         url: 'https://redocly.com/'
       }
@@ -60,7 +60,7 @@ app.get('*', (req, res) => {
 
 app.post('*', (req, res) => {
   res.json({
-    id: 'test-id-01',
+    id: 'test-push-id',
     mountPath: 'test-mount-path'
   });
 });

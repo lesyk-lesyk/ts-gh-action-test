@@ -9,7 +9,7 @@ import { getRedoclyConfig, parseEventData, parseInputData } from './helpers';
 export async function run(): Promise<void> {
   try {
     const inputData = parseInputData();
-    const ghEvent = parseEventData();
+    const ghEvent = await parseEventData();
 
     // eslint-disable-next-line no-console
     console.debug('Push arguments', {
@@ -18,18 +18,6 @@ export async function run(): Promise<void> {
     });
 
     const config = await getRedoclyConfig(inputData.redoclyConfigPath);
-
-    if (
-      !ghEvent.branch ||
-      !ghEvent.defaultBranch ||
-      !ghEvent.commit.commitMessage ||
-      !ghEvent.commit.commitSha ||
-      !ghEvent.commit.commitAuthor ||
-      !ghEvent.namespace ||
-      !ghEvent.repository
-    ) {
-      throw new Error('Invalid GitHub event data');
-    }
 
     const pushData = await handlePush(
       {
@@ -69,9 +57,9 @@ export async function run(): Promise<void> {
           try {
             setCommitStatuses({
               data: lastResult,
-              owner: ghEvent.namespace!, // TODO: remove the `!` operator
-              repo: ghEvent.repository!, // TODO: remove the `!` operator
-              commitId: ghEvent.commit.commitSha! // TODO: remove the `!` operator
+              owner: ghEvent.namespace,
+              repo: ghEvent.repository,
+              commitId: ghEvent.commit.commitSha
             });
           } catch (error: unknown) {
             core.error(
@@ -87,12 +75,19 @@ export async function run(): Promise<void> {
       throw new Error('Missing push status data');
     }
 
+    console.debug(
+      'Amount of final commit statuses to set',
+      pushStatusData.commit.statuses.length
+    );
+
     await setCommitStatuses({
       data: pushStatusData,
       owner: ghEvent.namespace,
       repo: ghEvent.repository,
       commitId: ghEvent.commit.commitSha
     });
+
+    console.debug('Action finished successfully. Push ID:', pushData.pushId);
 
     core.setOutput('pushId', pushData.pushId);
   } catch (error) {
