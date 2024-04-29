@@ -42,7 +42,7 @@ export async function run(): Promise<void> {
     );
 
     if (!pushData?.pushId) {
-      throw new Error('Missing push ID');
+      throw new Error('Missing push ID.');
     }
 
     const pushStatusData = await handlePushStatus(
