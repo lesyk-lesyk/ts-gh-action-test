@@ -76475,7 +76475,7 @@ async function parseEventData() {
     if (!defaultBranch) {
         throw new Error('Invalid GitHub event data. Can not get default branch from the event payload.');
     }
-    const commitSha = github.context.payload.after;
+    const commitSha = getCommitSha();
     if (!commitSha) {
         throw new Error('Invalid GitHub event data. Can not get commit sha from the event payload.');
     }
@@ -76503,6 +76503,20 @@ async function parseEventData() {
     };
 }
 exports.parseEventData = parseEventData;
+function getCommitSha() {
+    if (github.context.eventName === 'push') {
+        return github.context.payload.after;
+    }
+    if (github.context.eventName === 'pull_request') {
+        if (github.context.payload.action === 'opened') {
+            return github.context.payload.pull_request?.head?.sha;
+        }
+        if (github.context.payload.action === 'synchronize') {
+            return github.context.payload.after;
+        }
+    }
+    // TBD: what about other cases?
+}
 async function getRedoclyConfig(configPath) {
     const redoclyConfig = await (0, openapi_core_1.loadConfig)({
         configPath: configPath && process.env.GITHUB_WORKSPACE
@@ -76547,6 +76561,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(42186));
+const github = __importStar(__nccwpck_require__(95438));
 const push_1 = __nccwpck_require__(8893);
 const push_status_1 = __nccwpck_require__(74229);
 const set_commit_statuses_1 = __nccwpck_require__(55467);
@@ -76617,6 +76632,7 @@ async function run() {
         core.setOutput('pushId', pushData.pushId);
     }
     catch (error) {
+        console.debug('GitHub context', JSON.stringify(github.context, null, 2));
         if (error instanceof Error)
             core.setFailed(error.message);
     }

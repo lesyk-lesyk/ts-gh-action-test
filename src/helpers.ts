@@ -69,7 +69,7 @@ export async function parseEventData(): Promise<ParsedEventData> {
     );
   }
 
-  const commitSha: string | undefined = github.context.payload.after;
+  const commitSha = getCommitSha();
 
   if (!commitSha) {
     throw new Error(
@@ -102,6 +102,23 @@ export async function parseEventData(): Promise<ParsedEventData> {
     defaultBranch,
     commit
   };
+}
+
+function getCommitSha(): string | undefined {
+  if (github.context.eventName === 'push') {
+    return github.context.payload.after;
+  }
+
+  if (github.context.eventName === 'pull_request') {
+    if (github.context.payload.action === 'opened') {
+      return github.context.payload.pull_request?.head?.sha;
+    }
+    if (github.context.payload.action === 'synchronize') {
+      return github.context.payload.after;
+    }
+  }
+
+  // TBD: what about other cases?
 }
 
 export async function getRedoclyConfig(
