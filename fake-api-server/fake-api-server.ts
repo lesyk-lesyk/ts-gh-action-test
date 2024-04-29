@@ -25,16 +25,10 @@ const stubResponseStatus: PushResponse = {
     },
     statuses: [
       {
-        name: 'CI Test (Test Status 1)',
-        description: 'Test description 1',
+        name: 'CI / Commit status test',
+        description: 'Test description',
         status: 'success',
-        url: 'https://test-url-01'
-      },
-      {
-        name: 'CI Test (Test Status 2)',
-        description: 'Test description 1',
-        status: 'success',
-        url: 'https://test-url-01'
+        url: 'https://redocly.com/'
       }
     ]
   },
