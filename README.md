@@ -188,7 +188,7 @@ in the GitHub Actions toolkit.
 
 To include the action in a workflow in another repository, you can use the
 `uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
-hash..
+hash.
 
 ```yaml
 steps:
