@@ -76509,7 +76509,7 @@ function getCommitSha() {
     }
     if (github.context.eventName === 'pull_request') {
         if (github.context.payload.action === 'opened') {
-            return github.context.payload.pull_request?.head.repo.sha;
+            return github.context.payload.pull_request?.base?.head?.repo?.sha;
         }
         if (github.context.payload.action === 'synchronize') {
             return github.context.payload.after;
