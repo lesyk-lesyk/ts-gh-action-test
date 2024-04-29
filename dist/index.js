@@ -76594,7 +76594,7 @@ async function run() {
             'created-at': ghEvent.commit.commitCreatedAt
         }, config);
         if (!pushData?.pushId) {
-            throw new Error('Missing push ID');
+            throw new Error('Missing push ID.');
         }
         const pushStatusData = await (0, push_status_1.handlePushStatus)({
             organization: inputData.redoclyOrgSlug,
