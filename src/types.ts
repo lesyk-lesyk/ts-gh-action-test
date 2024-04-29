@@ -9,15 +9,16 @@ export interface ParsedInputData {
 }
 
 export interface ParsedEventData {
-  namespace?: string;
-  repository?: string;
-  branch?: string;
-  defaultBranch?: string;
+  eventName: string;
+  namespace: string;
+  repository: string;
+  branch: string;
+  defaultBranch: string;
   commit: {
-    commitMessage?: string;
-    commitSha?: string;
-    commitUrl?: string;
-    commitAuthor?: string;
+    commitSha: string;
+    commitMessage: string;
+    commitUrl: string;
+    commitAuthor: string;
     commitCreatedAt?: string;
   };
 }
