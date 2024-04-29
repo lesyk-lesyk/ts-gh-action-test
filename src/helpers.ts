@@ -30,6 +30,7 @@ export function parseInputData(): ParsedInputData {
 }
 
 export function parseEventData(): ParsedEventData {
+  console.log('>>> github.context', github.context);
   const namespace = github.context.payload?.repository?.owner?.login;
   const repository = github.context.payload?.repository?.name;
 
