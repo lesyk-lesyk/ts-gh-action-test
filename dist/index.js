@@ -76475,7 +76475,10 @@ async function parseEventData() {
     if (!defaultBranch) {
         throw new Error('Invalid GitHub event data. Can not get default branch from the event payload.');
     }
-    const commitSha = github.context.sha;
+    const commitSha = github.context.payload.after;
+    if (!commitSha) {
+        throw new Error('Invalid GitHub event data. Can not get commit sha from the event payload.');
+    }
     const githubToken = core.getInput('githubToken');
     const octokit = github.getOctokit(githubToken);
     const { data: commitData } = await octokit.rest.repos.getCommit({

@@ -69,7 +69,14 @@ export async function parseEventData(): Promise<ParsedEventData> {
     );
   }
 
-  const commitSha = github.context.sha;
+  const commitSha: string | undefined = github.context.payload.after;
+
+  if (!commitSha) {
+    throw new Error(
+      'Invalid GitHub event data. Can not get commit sha from the event payload.'
+    );
+  }
+
   const githubToken = core.getInput('githubToken');
   const octokit = github.getOctokit(githubToken);
 

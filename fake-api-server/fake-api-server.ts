@@ -60,7 +60,7 @@ app.get('*', (req, res) => {
 
 app.post('*', (req, res) => {
   res.json({
-    id: 'test-id-01',
+    id: 'test-push-id',
     mountPath: 'test-mount-path'
   });
 });
