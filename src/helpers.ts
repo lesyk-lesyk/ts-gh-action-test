@@ -86,8 +86,6 @@ export async function parseEventData(): Promise<ParsedEventData> {
     ref: commitSha
   });
 
-  console.log('commitData', JSON.stringify(commitData, null, 2));
-
   const commit: ParsedEventData['commit'] = {
     commitSha,
     commitMessage: commitData.commit.message,
