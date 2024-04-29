@@ -42,7 +42,7 @@ export async function run(): Promise<void> {
     );
 
     if (!pushData?.pushId) {
-      throw new Error('Missing push ID.');
+      throw new Error('Missing push ID');
     }
 
     const pushStatusData = await handlePushStatus(
@@ -88,7 +88,11 @@ export async function run(): Promise<void> {
       commitId: ghEvent.commit.commitSha
     });
 
-    console.debug('Action finished successfully. Push ID:', pushData.pushId);
+    console.debug(
+      'Action finished successfully. Push ID:',
+      pushData.pushId,
+      'test'
+    );
 
     core.setOutput('pushId', pushData.pushId);
   } catch (error) {
