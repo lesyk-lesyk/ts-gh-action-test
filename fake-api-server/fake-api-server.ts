@@ -25,8 +25,8 @@ const stubResponseStatus: PushResponse = {
     },
     statuses: [
       {
-        name: 'CI / Commit status test',
-        description: 'Test description',
+        name: 'CI / Action smoke test [commit status]',
+        description: 'Status, which is set by action',
         status: 'success',
         url: 'https://redocly.com/'
       }
