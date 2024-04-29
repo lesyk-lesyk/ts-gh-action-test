@@ -76547,6 +76547,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(42186));
+const github = __importStar(__nccwpck_require__(95438));
 const push_1 = __nccwpck_require__(8893);
 const push_status_1 = __nccwpck_require__(74229);
 const set_commit_statuses_1 = __nccwpck_require__(55467);
@@ -76617,6 +76618,7 @@ async function run() {
         core.setOutput('pushId', pushData.pushId);
     }
     catch (error) {
+        console.debug('GitHub context', JSON.stringify(github.context, null, 2));
         if (error instanceof Error)
             core.setFailed(error.message);
     }
