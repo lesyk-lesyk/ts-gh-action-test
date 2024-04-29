@@ -76606,12 +76606,14 @@ async function run() {
         if (!pushStatusData) {
             throw new Error('Missing push status data');
         }
+        console.debug('Amount of final commit statuses to set', pushStatusData.commit.statuses.length);
         await (0, set_commit_statuses_1.setCommitStatuses)({
             data: pushStatusData,
             owner: ghEvent.namespace,
             repo: ghEvent.repository,
             commitId: ghEvent.commit.commitSha
         });
+        console.debug('Action finished successfully. Push ID:', pushData.pushId);
         core.setOutput('pushId', pushData.pushId);
     }
     catch (error) {

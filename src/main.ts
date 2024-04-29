@@ -75,12 +75,19 @@ export async function run(): Promise<void> {
       throw new Error('Missing push status data');
     }
 
+    console.debug(
+      'Amount of final commit statuses to set',
+      pushStatusData.commit.statuses.length
+    );
+
     await setCommitStatuses({
       data: pushStatusData,
       owner: ghEvent.namespace,
       repo: ghEvent.repository,
       commitId: ghEvent.commit.commitSha
     });
+
+    console.debug('Action finished successfully. Push ID:', pushData.pushId);
 
     core.setOutput('pushId', pushData.pushId);
   } catch (error) {
