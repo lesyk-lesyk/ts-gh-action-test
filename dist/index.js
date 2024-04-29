@@ -76486,6 +76486,7 @@ async function parseEventData() {
         repo: repository,
         ref: commitSha
     });
+    console.log('commitData', JSON.stringify(commitData, null, 2));
     const commit = {
         commitSha,
         commitMessage: commitData.commit.message,
