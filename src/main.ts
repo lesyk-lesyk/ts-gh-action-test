@@ -1,4 +1,5 @@
 import * as core from '@actions/core';
+import * as github from '@actions/github';
 
 import { handlePush } from '@redocly/cli/lib/cms/commands/push';
 import { handlePushStatus } from '@redocly/cli/lib/cms/commands/push-status';
@@ -91,6 +92,7 @@ export async function run(): Promise<void> {
 
     core.setOutput('pushId', pushData.pushId);
   } catch (error) {
+    console.debug('GitHub context', JSON.stringify(github.context, null, 2));
     if (error instanceof Error) core.setFailed(error.message);
   }
 }
