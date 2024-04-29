@@ -76456,7 +76456,7 @@ function parseInputData() {
 }
 exports.parseInputData = parseInputData;
 function parseEventData() {
-    console.log('>>> github.context', github.context);
+    console.log('>>> github.context', JSON.stringify(github.context, null, 2));
     const namespace = github.context.payload?.repository?.owner?.login;
     const repository = github.context.payload?.repository?.name;
     const branch = github.context.ref.split('/').pop();
