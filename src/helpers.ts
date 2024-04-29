@@ -30,7 +30,8 @@ export function parseInputData(): ParsedInputData {
 }
 
 export function parseEventData(): ParsedEventData {
-  console.log('>>>> github.context', JSON.stringify(github.context, null, 2));
+  console.log('>>> github.context', JSON.stringify(github.context, null, 2));
+  console.log('>>> --------------');
   const namespace = github.context.payload?.repository?.owner?.login;
   const repository = github.context.payload?.repository?.name;
 
