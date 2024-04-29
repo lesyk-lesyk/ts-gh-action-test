@@ -76628,7 +76628,7 @@ async function run() {
             repo: ghEvent.repository,
             commitId: ghEvent.commit.commitSha
         });
-        console.debug('Action finished successfully. Push ID:', pushData.pushId, 'test');
+        console.debug('Action finished successfully. Push ID:', pushData.pushId);
         core.setOutput('pushId', pushData.pushId);
     }
     catch (error) {
