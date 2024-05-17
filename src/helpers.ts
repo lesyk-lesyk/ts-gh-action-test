@@ -5,12 +5,12 @@ import { loadConfig } from '@redocly/openapi-core';
 import { ParsedEventData, ParsedInputData } from './types';
 
 export function parseInputData(): ParsedInputData {
-  const redoclyOrgSlug = core.getInput('organization');
-  const redoclyProjectSlug = core.getInput('project');
+  const redoclyOrgSlug = core.getInput('organization', { required: true });
+  const redoclyProjectSlug = core.getInput('project', { required: true });
   const redoclyDomain =
     core.getInput('domain') || 'https://app.cloud.redocly.com';
-  const files = core.getInput('files').split(' ');
-  const mountPath = core.getInput('mountPath');
+  const files = core.getInput('files', { required: true }).split(' ');
+  const mountPath = core.getInput('mountPath', { required: true });
   const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
   const redoclyConfigPath = core.getInput('redoclyConfigPath');
 
