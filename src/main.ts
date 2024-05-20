@@ -12,6 +12,10 @@ export async function run(): Promise<void> {
     const inputData = parseInputData();
     const ghEvent = await parseEventData();
 
+    console.log('------------');
+    console.log('github.context', github.context);
+    console.log('------------');
+
     // eslint-disable-next-line no-console
     console.debug('Push arguments', {
       inputData,
