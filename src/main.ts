@@ -13,7 +13,7 @@ export async function run(): Promise<void> {
     const ghEvent = await parseEventData();
 
     console.log('------------');
-    console.log('github.context', github.context);
+    console.log('github.context', JSON.stringify(github.context, null, 2));
     console.log('------------');
 
     // eslint-disable-next-line no-console
