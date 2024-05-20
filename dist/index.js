@@ -76436,11 +76436,11 @@ const core = __importStar(__nccwpck_require__(42186));
 const github = __importStar(__nccwpck_require__(95438));
 const openapi_core_1 = __nccwpck_require__(59307);
 function parseInputData() {
-    const redoclyOrgSlug = core.getInput('organization');
-    const redoclyProjectSlug = core.getInput('project');
+    const redoclyOrgSlug = core.getInput('organization', { required: true });
+    const redoclyProjectSlug = core.getInput('project', { required: true });
     const redoclyDomain = core.getInput('domain') || 'https://app.cloud.redocly.com';
-    const files = core.getInput('files').split(' ');
-    const mountPath = core.getInput('mountPath');
+    const files = core.getInput('files', { required: true }).split(' ');
+    const mountPath = core.getInput('mountPath', { required: true });
     const maxExecutionTime = Number(core.getInput('maxExecutionTime')) || 20000;
     const redoclyConfigPath = core.getInput('redoclyConfigPath');
     const absoluteFilePaths = files.map(_path => path_1.default.join(process.env.GITHUB_WORKSPACE || '', _path));
@@ -76570,6 +76570,9 @@ async function run() {
     try {
         const inputData = (0, helpers_1.parseInputData)();
         const ghEvent = await (0, helpers_1.parseEventData)();
+        console.log('------------');
+        console.log('github.context', github.context);
+        console.log('------------');
         // eslint-disable-next-line no-console
         console.debug('Push arguments', {
             inputData,
