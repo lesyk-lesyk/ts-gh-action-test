@@ -76571,7 +76571,7 @@ async function run() {
         const inputData = (0, helpers_1.parseInputData)();
         const ghEvent = await (0, helpers_1.parseEventData)();
         console.log('------------');
-        console.log('github.context', github.context);
+        console.log('github.context', JSON.stringify(github.context, null, 2));
         console.log('------------');
         // eslint-disable-next-line no-console
         console.debug('Push arguments', {
